@@ -105,7 +105,7 @@ if __name__ == "__main__":
     stack_size = 4
     frame_size = (64, 64)
     max_cycles = 125
-    total_episodes = 2
+    total_episodes = 10
 
     """ ENV SETUP """
     env = pistonball_v6.parallel_env(
