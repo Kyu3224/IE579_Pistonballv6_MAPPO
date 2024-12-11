@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 import torch.optim as optim
+import os
+
+from datetime import datetime
 import yaml
 
 from agent import Agent, batchify_obs, batchify, unbatchify  # Assuming Agent and helper functions are in agent.py
@@ -9,6 +12,7 @@ class PPO:
     def __init__(self, env):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # Read from Yaml file
         with open('ppo_config.yaml') as f:
             self.config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -20,6 +24,7 @@ class PPO:
         self.stack_size = self.config['stack_size']
         self.max_cycles = self.config['max_cycles']
         self.total_episodes = self.config['total_episodes']
+        self.save_interval = self.config['save_interval']
         self.frame_size = (64, 64)
 
         self.num_agents = len(env.possible_agents)
@@ -39,6 +44,10 @@ class PPO:
         self.rb_terms = torch.zeros((self.max_cycles, self.num_agents)).to(self.device)
         self.rb_values = torch.zeros((self.max_cycles, self.num_agents)).to(self.device)
 
+        # For Logging
+        self.current_time = datetime.now().strftime("%m%d_%H%M")
+        self.save_dir = f'logs/ppo/{self.current_time}'
+        os.makedirs(self.save_dir, exist_ok=True)
 
     def run(self):
 
@@ -47,7 +56,7 @@ class PPO:
                 # collect observations and convert to batch of torch tensors
                 next_obs, info = self.env.reset(seed=None)
                 # reset the episodic return
-                total_episodic_return = 0
+                self.total_episodic_return = 0
 
                 # each episode has num_steps
                 for step in range(0, self.max_cycles):
@@ -71,7 +80,7 @@ class PPO:
                     self.rb_values[step] = values.flatten()
 
                     # compute episodic return
-                    total_episodic_return += self.rb_rewards[step].cpu().numpy()
+                    self.total_episodic_return += self.rb_rewards[step].cpu().numpy()
 
                     # if we reach termination or truncation, end
                     if any([terms[a] for a in terms]) or any([truncs[a] for a in truncs]):
@@ -100,7 +109,7 @@ class PPO:
 
             # Optimizing the policy and value network
             b_index = np.arange(len(self.b_obs))
-            clip_fracs = []
+            self.clip_fracs = []
             for repeat in range(3):
                 # shuffle the indices we use to access the data
                 np.random.shuffle(b_index)
@@ -117,9 +126,9 @@ class PPO:
 
                     with torch.no_grad():
                         # calculate approx_kl http://joschu.net/blog/kl-approx.html
-                        old_approx_kl = (-logratio).mean()
-                        approx_kl = ((ratio - 1) - logratio).mean()
-                        clip_fracs += [
+                        self.old_approx_kl = (-logratio).mean()
+                        self.approx_kl = ((ratio - 1) - logratio).mean()
+                        self.clip_fracs += [
                             ((ratio - 1.0).abs() > self.clip_coef).float().mean().item()
                         ]
 
@@ -134,7 +143,7 @@ class PPO:
                     pg_loss2 = -self.b_advantages[batch_index] * torch.clamp(
                         ratio, 1 - self.clip_coef, 1 + self.clip_coef
                     )
-                    pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                    self.pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                     # Value loss
                     value = value.flatten()
@@ -146,10 +155,10 @@ class PPO:
                     )
                     v_loss_clipped = (v_clipped - self.b_returns[batch_index]) ** 2
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                    v_loss = 0.5 * v_loss_max.mean()
+                    self.v_loss = 0.5 * v_loss_max.mean()
 
                     entropy_loss = entropy.mean()
-                    loss = pg_loss - self.ent_coef * entropy_loss + v_loss * self.vf_coef
+                    loss = self.pg_loss - self.ent_coef * entropy_loss + self.v_loss * self.vf_coef
 
                     self.optimizer.zero_grad()
                     loss.backward()
@@ -157,16 +166,31 @@ class PPO:
 
             y_pred, y_true = self.b_values.cpu().numpy(), self.b_returns.cpu().numpy()
             var_y = np.var(y_true)
-            explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+            self.explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
             print(f"Training episode {episode}")
-            print(f"Episodic Return: {np.mean(total_episodic_return)}")
+            print(f"Episodic Return: {np.mean(self.total_episodic_return)}")
             print(f"Episode Length: {end_step}")
             print("")
-            print(f"Value Loss: {v_loss.item()}")
-            print(f"Policy Loss: {pg_loss.item()}")
-            print(f"Old Approx KL: {old_approx_kl.item()}")
-            print(f"Approx KL: {approx_kl.item()}")
-            print(f"Clip Fraction: {np.mean(clip_fracs)}")
-            print(f"Explained Variance: {explained_var.item()}")
-            print("\n-------------------------------------------\n")
+            self.log()
+
+            if episode % self.save_interval == 0 and episode != 0:
+                self.save(episode)
+
+    def log(self):
+        print(f"Value Loss: {self.v_loss.item()}")
+        print(f"Policy Loss: {self.pg_loss.item()}")
+        print(f"Old Approx KL: {self.old_approx_kl.item()}")
+        print(f"Approx KL: {self.approx_kl.item()}")
+        print(f"Clip Fraction: {np.mean(self.clip_fracs)}")
+        print(f"Explained Variance: {self.explained_var.item()}")
+        print("\n-------------------------------------------\n")
+
+
+    def save(self, episode):
+        if episode == self.save_interval:
+            yaml_save_path = os.path.join(self.save_dir,'ppo_config.yaml')
+            with open(yaml_save_path, 'w') as f:
+                yaml.dump(self.config, f)
+        torch.save(self.agent.state_dict(), f'{self.save_dir}/{episode}_iter.pt')
+        print(f"Model saved as '{episode}_iter.pt'.")

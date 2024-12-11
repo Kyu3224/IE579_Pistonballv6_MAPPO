@@ -6,3 +6,4 @@ batch_size : 32
 stack_size : 4
 max_cycles : 125
 total_episodes : 5000
+save_interval: 3
