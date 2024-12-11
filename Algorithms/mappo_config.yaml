@@ -2,7 +2,6 @@
 env:
   stack_size: 4           # 스택 크기 (Stack Size)
   frame_size: [64, 64]    # 프레임 크기 (Frame Size)
-  max_cycles: 125         # 최대 사이클 수 (Maximum Cycles)
 
 # Training Settings
 train:
@@ -11,6 +10,7 @@ train:
   clip_coef: 0.1          # 클리핑 계수 (Clipping Coefficient)
   gamma: 0.99             # 할인율 (Discount Factor)
   batch_size: 32          # 배치 크기 (Batch Size)
+  max_cycles: 125         # 최대 사이클 수 (Maximum Cycles)
   total_episodes: 5000    # 총 에피소드 수 (Total Episodes)
 
 # Saving Settings

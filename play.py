@@ -12,7 +12,7 @@ env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=4)
 
 agent = Agent(num_actions=env.action_space(env.possible_agents[0]).n).to(device)  # Set num_actions as per your environment
-agent.load_state_dict(torch.load('./policy/1211_0705_ppo_5000iter.pt', weights_only=True))
+agent.load_state_dict(torch.load('/home/kyu/Desktop/workspace/marl_project/logs/ppo/1211_1559/600_iter.pt', weights_only=True))
 agent.eval()  # Set to evaluation mode
 
 

@@ -18,13 +18,13 @@ class PPO:
 
         self.stack_size = self.config['env']['stack_size']
         self.frame_size = self.config['env']['frame_size']
+        self.max_cycles = self.config['env']['max_cycles']
 
         self.ent_coef = self.config['train']['ent_coef']
         self.vf_coef = self.config['train']['vf_coef']
         self.clip_coef = self.config['train']['clip_coef']
         self.gamma = self.config['train']['gamma']
         self.batch_size = self.config['train']['batch_size']
-        self.max_cycles = self.config['train']['max_cycles']
         self.total_episodes = self.config['train']['total_episodes']
 
         self.save_interval = self.config['log']['save_interval']
