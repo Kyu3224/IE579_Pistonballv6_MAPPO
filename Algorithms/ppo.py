@@ -2,10 +2,10 @@ import numpy as np
 import torch
 import torch.optim as optim
 import os
+import yaml
+import wandb
 
 from datetime import datetime
-import yaml
-
 from agent import Agent, batchify_obs, batchify, unbatchify  # Assuming Agent and helper functions are in agent.py
 
 class PPO:
@@ -13,19 +13,23 @@ class PPO:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Read from Yaml file
-        with open('ppo_config.yaml') as f:
+        with open('Algorithms/ppo_config.yaml') as f:
             self.config = yaml.load(f, Loader=yaml.FullLoader)
 
-        self.ent_coef = self.config['ent_coef']
-        self.vf_coef = self.config['vf_coef']
-        self.clip_coef = self.config['clip_coef']
-        self.gamma = self.config['gamma']
-        self.batch_size = self.config['batch_size']
-        self.stack_size = self.config['stack_size']
-        self.max_cycles = self.config['max_cycles']
-        self.total_episodes = self.config['total_episodes']
-        self.save_interval = self.config['save_interval']
-        self.frame_size = (64, 64)
+        self.stack_size = self.config['env']['stack_size']
+        self.frame_size = self.config['env']['frame_size']
+
+        self.ent_coef = self.config['train']['ent_coef']
+        self.vf_coef = self.config['train']['vf_coef']
+        self.clip_coef = self.config['train']['clip_coef']
+        self.gamma = self.config['train']['gamma']
+        self.batch_size = self.config['train']['batch_size']
+        self.max_cycles = self.config['train']['max_cycles']
+        self.total_episodes = self.config['train']['total_episodes']
+
+        self.save_interval = self.config['log']['save_interval']
+        self.wandb_interval = self.config['log']['wandb_interval']
+        self.use_wandb = self.config['log']['use_wandb']
 
         self.num_agents = len(env.possible_agents)
         self.num_actions = env.action_space(env.possible_agents[0]).n
@@ -50,6 +54,10 @@ class PPO:
         os.makedirs(self.save_dir, exist_ok=True)
 
     def run(self):
+        if self.use_wandb:
+            wandb.init(project="Multi_agent_piston",
+                       name=f"{self.current_time}_ppo",
+                       config=self.config)
 
         for episode in range(self.total_episodes):
             with torch.no_grad():
@@ -172,12 +180,15 @@ class PPO:
             print(f"Episodic Return: {np.mean(self.total_episodic_return)}")
             print(f"Episode Length: {end_step}")
             print("")
-            self.log()
+
+            self.log(episode)
 
             if episode % self.save_interval == 0 and episode != 0:
                 self.save(episode)
 
-    def log(self):
+        wandb.finish()
+
+    def log(self, episode):
         print(f"Value Loss: {self.v_loss.item()}")
         print(f"Policy Loss: {self.pg_loss.item()}")
         print(f"Old Approx KL: {self.old_approx_kl.item()}")
@@ -185,6 +196,16 @@ class PPO:
         print(f"Clip Fraction: {np.mean(self.clip_fracs)}")
         print(f"Explained Variance: {self.explained_var.item()}")
         print("\n-------------------------------------------\n")
+        if episode % self.wandb_interval:
+            wandb.log({
+                "Reward": np.mean(self.total_episodic_return),
+                "Value_loss": self.v_loss.item(),
+                "Policy_loss": self.pg_loss.item(),
+                "Old Approx KL": self.old_approx_kl.item(),
+                "Approx KL": self.approx_kl.item(),
+                "Clip Fraction": self.clip_fracs,
+                "Explained Variance": self.explained_var,
+            })
 
 
     def save(self, episode):

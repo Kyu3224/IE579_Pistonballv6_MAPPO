@@ -1,0 +1,21 @@
+# Environment Settings
+env:
+  stack_size: 4           # 스택 크기 (Stack Size)
+  frame_size: [64, 64]    # 프레임 크기 (Frame Size)
+
+# Training Settings
+train:
+  ent_coef: 0.1            # 엔트로피 계수 (Entropy Coefficient)
+  vf_coef: 0.1            # 가치 함수 계수 (Value Function Coefficient)
+  clip_coef: 0.1          # 클리핑 계수 (Clipping Coefficient)
+  gamma: 0.99             # 할인율 (Discount Factor)
+  batch_size: 32          # 배치 크기 (Batch Size)
+  max_cycles: 125         # 최대 사이클 수 (Maximum Cycles)
+  total_episodes: 5000    # 총 에피소드 수 (Total Episodes)
+
+# Saving Settings
+log:
+  save_interval: 50       # 저장 간격 (Save Interval)
+  use_wandb: true         # Wandb 사용 여부
+  wandb_interval: 5       # Wandb에 저장하는 간격
+

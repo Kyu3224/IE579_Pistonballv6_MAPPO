@@ -3,13 +3,13 @@ from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
 from Algorithms.ppo import PPO
 
-with open('ppo_config.yaml') as f:
+with open('Algorithms/ppo_config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 # Hyperparameters for env.
-stack_size = config['stack_size']
-max_cycles = config['max_cycles']
-frame_size = (64, 64)
+stack_size = config['env']['stack_size']
+max_cycles = config['train']['max_cycles']
+frame_size = config['env']['frame_size']
 
 from datetime import datetime
 
