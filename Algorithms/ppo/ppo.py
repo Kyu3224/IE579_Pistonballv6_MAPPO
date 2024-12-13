@@ -13,7 +13,7 @@ class PPO:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Read from Yaml file
-        with open('Algorithms/ppo_config.yaml') as f:
+        with open('Algorithms/ppo/ppo_config.yaml') as f:
             self.config = yaml.load(f, Loader=yaml.FullLoader)
 
         self.stack_size = self.config['env']['stack_size']
