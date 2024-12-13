@@ -9,8 +9,8 @@ from skrl.memories.torch import RandomMemory
 from skrl.envs.wrappers.torch import wrap_env
 
 # Algorithms
-from agent import Agent
-from Algorithms.ppo import PPO
+from Algorithms.ppo.ppo_agent import Agent
+from Algorithms.ppo.ppo import PPO
 
 # Alg = 'mappo'
 Alg = 'ppo'

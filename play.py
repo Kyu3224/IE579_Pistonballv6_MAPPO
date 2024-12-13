@@ -1,7 +1,7 @@
 import torch
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
-from agent import Agent, batchify_obs, unbatchify  # Assuming Agent and helper functions are in agent.py
+from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming Agent and helper functions are in agent.py
 
 # Load trained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

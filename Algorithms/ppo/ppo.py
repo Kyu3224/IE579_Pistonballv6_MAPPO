@@ -6,7 +6,7 @@ import yaml
 import wandb
 
 from datetime import datetime
-from agent import Agent, batchify_obs, batchify, unbatchify  # Assuming Agent and helper functions are in agent.py
+from Algorithms.ppo.ppo_agent import Agent, batchify_obs, batchify, unbatchify  # Assuming Agent and helper functions are in agent.py
 
 class PPO:
     def __init__(self, env):
