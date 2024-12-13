@@ -1,21 +1,48 @@
+# MAPPO Configuration
+
 # Environment Settings
 env:
-  stack_size: 4           # 스택 크기 (Stack Size)
-  frame_size: [64, 64]    # 프레임 크기 (Frame Size)
+  stack_size: 4              # Stack Size
+  frame_size: [64, 64]       # Frame Size
+  max_cycles: 125            # 최대 사이클 수 (Maximum Cycles)
 
 # Training Settings
 train:
-  ent_coef: 0.1            # 엔트로피 계수 (Entropy Coefficient)
-  vf_coef: 0.1            # 가치 함수 계수 (Value Function Coefficient)
-  clip_coef: 0.1          # 클리핑 계수 (Clipping Coefficient)
-  gamma: 0.99             # 할인율 (Discount Factor)
-  batch_size: 32          # 배치 크기 (Batch Size)
-  max_cycles: 125         # 최대 사이클 수 (Maximum Cycles)
-  total_episodes: 5000    # 총 에피소드 수 (Total Episodes)
+  rollouts: 16               # Number of rollouts before updating
+  learning_epochs: 8         # Number of learning epochs during each update
+  mini_batches: 2            # Number of mini batches during each learning epoch
+  discount_factor: 0.99      # Discount Factor (Gamma)
+  lambda: 0.95               # TD(lambda) coefficient for computing returns and advantages
+
+  learning_rate: 1e-3                   # Learning Rate
+  learning_rate_scheduler: None         # Learning rate scheduler class
+  learning_rate_scheduler_kwargs: {}    # Learning rate scheduler's kwargs
+
+  "state_preprocessor": None               # state preprocessor class (see skrl.resources.preprocessors)
+  "state_preprocessor_kwargs": { }         # state preprocessor's kwargs (e.g. {"size": env.observation_space})
+  "shared_state_preprocessor": None        # shared state preprocessor class (see skrl.resources.preprocessors)
+  "shared_state_preprocessor_kwargs": { }  # shared state preprocessor's kwargs (e.g. {"size": env.shared_observation_space})
+  "value_preprocessor": None               # value preprocessor class (see skrl.resources.preprocessors)
+  "value_preprocessor_kwargs": { }         # value preprocessor's kwargs (e.g. {"size": 1})
+
+  random_timesteps: 0        # Random exploration steps
+  learning_starts: 0         # Learning starts after this many steps
+
+  grad_norm_clip: 0.5        # Clipping coefficient for the norm of the gradients
+  ratio_clip: 0.2            # Clipping coefficient for computing the clipped surrogate objective
+  value_clip: 0.2            # Clipping coefficient for computing the value loss (if clip_predicted_values is True)
+  clip_predicted_values: False  # Clip predicted values during value loss computation
+
+  entropy_loss_scale: 0.0    # Entropy loss scaling factor
+  value_loss_scale: 1.0      # Value loss scaling factor
+
+  kl_threshold: 0
+
+  rewards_shaper: None        # Rewards shaping function
+  time_limit_bootstrap: False # Bootstrap at timeout termination
 
 # Saving Settings
 log:
-  save_interval: 50       # 저장 간격 (Save Interval)
-  use_wandb: true         # Wandb 사용 여부
-  wandb_interval: 5       # Wandb에 저장하는 간격
-
+  save_interval: 50          # Save interval (timesteps)
+  use_wandb: true            # Whether to use Wandb
+  wandb_interval: 5          # Interval for saving to Wandb -> Generalize하자. wandb_kwargs: {} 처럼
