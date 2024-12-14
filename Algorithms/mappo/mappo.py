@@ -311,7 +311,7 @@ class MAPPO(MultiAgent):
                     rewards[uid] += self._discount_factor[uid] * values * truncated[uid]
 
                 # Resizing
-                states[uid] = states[uid].view(1, 457, 120, 3)
+                states[uid] = states[uid].view(1, 64, 64, 3)
                 shared_states = shared_states.view(1, 560, 880, 3)
 
                 # storage transition in memory

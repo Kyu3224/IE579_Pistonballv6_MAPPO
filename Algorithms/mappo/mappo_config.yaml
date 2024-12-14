@@ -2,7 +2,7 @@
 
 # Environment Settings
 env:
-  stack_size: 4              # Stack Size
+  stack_size: 3             # Stack Size
   frame_size: [64, 64]       # Frame Size
   max_cycles: 125            # 최대 사이클 수 (Maximum Cycles)
 
@@ -48,7 +48,7 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/multi_agents/mappo.html
 agent:
   class: MAPPO
-  rollouts: 16
+  rollouts: 8
   learning_epochs: 8
   mini_batches: 1
   discount_factor: 0.99

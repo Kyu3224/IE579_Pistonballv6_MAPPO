@@ -36,16 +36,17 @@ env = pistonball_v6.parallel_env(
     max_cycles=max_cycles
 )
 
+env = color_reduction_v0(env)
+env = resize_v1(env, frame_size[0], frame_size[1])
+env = frame_stack_v1(env, stack_size=stack_size)
+
 if Alg == 'mappo':
-    torch.cuda.set_per_process_memory_fraction(0.5, device=0)
     # wrap the env
+    # Frame stack 안해서 학습 잘 안될수도
     env = wrap_env(env)
     runner = Runner(env, config)
 # Default env is set as PPO
 else:
-    env = color_reduction_v0(env)
-    env = resize_v1(env, frame_size[0], frame_size[1])
-    env = frame_stack_v1(env, stack_size=stack_size)
     runner = PPO(env)
 
 
