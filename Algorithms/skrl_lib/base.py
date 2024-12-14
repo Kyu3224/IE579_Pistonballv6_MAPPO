@@ -6,6 +6,8 @@ import tqdm
 
 import torch
 
+from torch.distributions.categorical import Categorical
+
 from skrl import config, logger
 from skrl.agents.torch import Agent
 from skrl.envs.wrappers.torch import Wrapper
@@ -299,7 +301,15 @@ class Trainer:
 
             # compute actions
             with torch.no_grad():
-                actions = self.agents.act(states, timestep=timestep, timesteps=self.timesteps)[0]
+                action_logits = self.agents.act(states, timestep=timestep, timesteps=self.timesteps)[0]
+
+                action_processed = [v for v in action_logits.values()]
+                action_processed = torch.cat(action_processed, dim=0)
+                action_probs = Categorical(logits=action_processed)
+
+                actions = action_probs.sample()
+
+                actions = {key: value.unsqueeze(0) for key, value in zip(list(action_logits.keys()), actions)}
 
                 # step the environments
                 next_states, rewards, terminated, truncated, infos = self.env.step(actions)

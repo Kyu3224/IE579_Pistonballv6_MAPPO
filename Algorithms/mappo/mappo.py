@@ -300,6 +300,8 @@ class MAPPO(MultiAgent):
                 if self._rewards_shaper is not None:
                     rewards[uid] = self._rewards_shaper(rewards[uid], timestep, timesteps)
 
+                shared_states = shared_states.view(1, -1)
+
                 # compute values
                 values, _, _ = self.values[uid].act({"states": self._shared_state_preprocessor[uid](shared_states)}, role="value")
                 values = self._value_preprocessor[uid](values, inverse=True)
@@ -307,6 +309,10 @@ class MAPPO(MultiAgent):
                 # time-limit (truncation) boostrapping
                 if self._time_limit_bootstrap[uid]:
                     rewards[uid] += self._discount_factor[uid] * values * truncated[uid]
+
+                # Resizing
+                states[uid] = states[uid].view(1, 457, 120, 3)
+                shared_states = shared_states.view(1, 560, 880, 3)
 
                 # storage transition in memory
                 self.memories[uid].add_samples(states=states[uid], actions=actions[uid], rewards=rewards[uid], next_states=next_states[uid],
@@ -427,6 +433,9 @@ class MAPPO(MultiAgent):
                 # mini-batches loop
                 for sampled_states, sampled_shared_states, sampled_actions, sampled_log_prob, sampled_values, sampled_returns, sampled_advantages \
                     in sampled_batches:
+
+                    sampled_states = sampled_states.reshape(self._rollouts, -1)
+                    sampled_shared_states = sampled_shared_states.reshape(self._rollouts, -1)
 
                     sampled_states = self._state_preprocessor[uid](sampled_states, train=not epoch)
                     sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states, train=not epoch)

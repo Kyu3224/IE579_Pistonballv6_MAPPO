@@ -37,6 +37,7 @@ env = pistonball_v6.parallel_env(
 )
 
 if Alg == 'mappo':
+    torch.cuda.set_per_process_memory_fraction(0.5, device=0)
     # wrap the env
     env = wrap_env(env)
     runner = Runner(env, config)

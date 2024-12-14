@@ -46,7 +46,7 @@ class MultiAgent:
         :type cfg: dict
         """
         self.possible_agents = possible_agents
-        self.num_agents = self.possible_agents.num_agents
+        self.num_agents = len(self.possible_agents)
 
         self.models = models
         self.memories = memories

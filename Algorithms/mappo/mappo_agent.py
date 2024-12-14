@@ -11,13 +11,13 @@ from skrl.envs.wrappers.torch import MultiAgentEnvWrapper, Wrapper
 from skrl.memories.torch import RandomMemory
 from skrl.models.torch import Model
 from skrl.multi_agents.torch.ippo import IPPO, IPPO_DEFAULT_CONFIG
-from skrl.multi_agents.torch.mappo import MAPPO, MAPPO_DEFAULT_CONFIG
 from skrl.resources.preprocessors.torch import RunningStandardScaler  # noqa
 from skrl.resources.schedulers.torch import KLAdaptiveLR  # noqa
 from skrl.trainers.torch import Trainer
 from skrl.utils import set_seed
 from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
 from ..skrl_lib.sequential import SequentialTrainer
+from .mappo import MAPPO, MAPPO_DEFAULT_CONFIG
 
 
 class Runner:
