@@ -1,6 +1,7 @@
 from typing import Any, Mapping, Type, Union
 
 import copy
+import yaml
 import numpy as np
 from gymnasium.spaces import Box
 
@@ -17,7 +18,7 @@ from skrl.trainers.torch import Trainer
 from skrl.utils import set_seed
 from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
 from ..skrl_lib.sequential import SequentialTrainer
-from .mappo import MAPPO, MAPPO_DEFAULT_CONFIG
+from .mappo import MAPPO
 
 
 class Runner:
@@ -148,18 +149,6 @@ class Runner:
         state_spaces = env.state_spaces if multi_agent else {"agent": env.state_space}
         observation_spaces = env.observation_spaces if multi_agent else {"agent": env.observation_space}
         action_spaces = env.action_spaces if multi_agent else {"agent": env.action_space}
-
-        # Custom -> Overlap action_spaces
-        # if env._unwrapped.multi_agent:
-        #     from gymnasium.spaces import Box
-        #     import numpy as np
-        #     new_shape = tuple([env.action_manager.last_action_dim])
-        #     action_spaces = {"agent": Box(
-        #         low=-np.inf,
-        #         high=np.inf,
-        #         shape=new_shape,
-        #         dtype=np.float32,
-        #     )}
 
         try:
             agent_class = self._class(cfg["agent"]["class"])
@@ -342,7 +331,9 @@ class Runner:
                 "possible_agents": possible_agents,
             }
         elif agent_class in [MAPPO]:
-            agent_cfg = MAPPO_DEFAULT_CONFIG.copy()
+            with open("Algorithms/ppo/ppo_config.yaml") as r:
+                agent_cfg = yaml.safe_load(r)
+            # agent_cfg = MAPPO_DEFAULT_CONFIG.copy()
             agent_cfg.update(self._process_cfg(cfg["agent"]))
             agent_cfg["state_preprocessor_kwargs"].update({
                 agent_id: {"size": observation_spaces[agent_id], "device": device}
