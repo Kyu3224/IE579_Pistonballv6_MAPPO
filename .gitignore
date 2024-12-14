@@ -1,3 +1,7 @@
 /policy/
 /logs/
 /wandb/
+*.out.tfevents.1734153293.DRCD.484735.0
+*.out.tfevents.1734097141.DRCD.392123.0
+/cart_double_pendulum_direct/
+*.cpython-311.pyc

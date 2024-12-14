@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from skrl import config, logger
 from skrl.memories.torch import Memory
 from skrl.models.torch import Model
-from skrl.multi_agents.torch import MultiAgent
+from Algorithms.skrl_lib.MultiAgent import MultiAgent
 from skrl.resources.schedulers.torch import KLAdaptiveLR
 
 

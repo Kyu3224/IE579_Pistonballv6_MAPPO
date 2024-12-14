@@ -6,43 +6,85 @@ env:
   frame_size: [64, 64]       # Frame Size
   max_cycles: 125            # 최대 사이클 수 (Maximum Cycles)
 
-# Training Settings
-train:
-  rollouts: 16               # Number of rollouts before updating
-  learning_epochs: 8         # Number of learning epochs during each update
-  mini_batches: 2            # Number of mini batches during each learning epoch
-  discount_factor: 0.99      # Discount Factor (Gamma)
-  lambda: 0.95               # TD(lambda) coefficient for computing returns and advantages
+seed: 42
 
-  learning_rate: 1e-3                   # Learning Rate
-  learning_rate_scheduler: None         # Learning rate scheduler class
-  learning_rate_scheduler_kwargs: {}    # Learning rate scheduler's kwargs
 
-  "state_preprocessor": None               # state preprocessor class (see skrl.resources.preprocessors)
-  "state_preprocessor_kwargs": { }         # state preprocessor's kwargs (e.g. {"size": env.observation_space})
-  "shared_state_preprocessor": None        # shared state preprocessor class (see skrl.resources.preprocessors)
-  "shared_state_preprocessor_kwargs": { }  # shared state preprocessor's kwargs (e.g. {"size": env.shared_observation_space})
-  "value_preprocessor": None               # value preprocessor class (see skrl.resources.preprocessors)
-  "value_preprocessor_kwargs": { }         # value preprocessor's kwargs (e.g. {"size": 1})
+# Models are instantiated using skrl's model instantiator utility
+# https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
+models:
+  separate: True
+  policy:  # see gaussian_model parameters
+    class: GaussianMixin
+    clip_actions: False
+    clip_log_std: True
+    min_log_std: -20.0
+    max_log_std: 2.0
+    initial_log_std: 0.0
+    network:
+      - name: net
+        input: STATES
+        layers: [32, 32]
+        activations: elu
+    output: ACTIONS
+  value:  # see deterministic_model parameters
+    class: DeterministicMixin
+    clip_actions: False
+    network:
+      - name: net
+        input: STATES
+        layers: [32, 32]
+        activations: elu
+    output: ONE
 
-  random_timesteps: 0        # Random exploration steps
-  learning_starts: 0         # Learning starts after this many steps
 
-  grad_norm_clip: 0.5        # Clipping coefficient for the norm of the gradients
-  ratio_clip: 0.2            # Clipping coefficient for computing the clipped surrogate objective
-  value_clip: 0.2            # Clipping coefficient for computing the value loss (if clip_predicted_values is True)
-  clip_predicted_values: False  # Clip predicted values during value loss computation
+# Rollout memory
+# https://skrl.readthedocs.io/en/latest/api/memories/random.html
+memory:
+  class: RandomMemory
+  memory_size: -1  # automatically determined (same as agent:rollouts)
 
-  entropy_loss_scale: 0.0    # Entropy loss scaling factor
-  value_loss_scale: 1.0      # Value loss scaling factor
 
-  kl_threshold: 0
+# MAPPO agent configuration (field names are from MAPPO_DEFAULT_CONFIG)
+# https://skrl.readthedocs.io/en/latest/api/multi_agents/mappo.html
+agent:
+  class: MAPPO
+  rollouts: 16
+  learning_epochs: 8
+  mini_batches: 1
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 3.0e-04
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.008
+  state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs: null
+  shared_state_preprocessor: RunningStandardScaler
+  shared_state_preprocessor_kwargs: null
+  value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs: null
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  clip_predicted_values: True
+  entropy_loss_scale: 0.0
+  value_loss_scale: 2.0
+  kl_threshold: 0.0
+  rewards_shaper_scale: 1.0
+  time_limit_bootstrap: False
+  # logging and checkpoint
+  experiment:
+    directory: "cart_double_pendulum_direct"
+    experiment_name: ""
+    write_interval: auto
+    checkpoint_interval: auto
 
-  rewards_shaper: None        # Rewards shaping function
-  time_limit_bootstrap: False # Bootstrap at timeout termination
 
-# Saving Settings
-log:
-  save_interval: 50          # Save interval (timesteps)
-  use_wandb: true            # Whether to use Wandb
-  wandb_interval: 5          # Interval for saving to Wandb -> Generalize하자. wandb_kwargs: {} 처럼
+# Sequential trainer
+# https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
+trainer:
+  class: SequentialTrainer
+  timesteps: 1600
+  environment_info: log

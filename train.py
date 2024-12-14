@@ -11,7 +11,7 @@ from skrl.envs.wrappers.torch import wrap_env
 # Algorithms
 from Algorithms.ppo.ppo_agent import Agent
 from Algorithms.ppo.ppo import PPO
-from Algorithms.mappo.mappo import MAPPO
+from Algorithms.mappo.mappo_agent import Runner
 
 Alg = 'mappo'
 # Alg = 'ppo'
@@ -35,17 +35,16 @@ env = pistonball_v6.parallel_env(
     continuous=False,
     max_cycles=max_cycles
 )
-env = color_reduction_v0(env)
-env = resize_v1(env, frame_size[0], frame_size[1])
-env = frame_stack_v1(env, stack_size=stack_size)
 
 if Alg == 'mappo':
     # wrap the env
-    env = wrap_env(env.env)
-    agent_cfg=1
-    runner = MAPPO(env, agent_cfg)
+    env = wrap_env(env)
+    runner = Runner(env, config)
 # Default env is set as PPO
 else:
+    env = color_reduction_v0(env)
+    env = resize_v1(env, frame_size[0], frame_size[1])
+    env = frame_stack_v1(env, stack_size=stack_size)
     runner = PPO(env)
 
 

@@ -14,9 +14,10 @@ from skrl.multi_agents.torch.ippo import IPPO, IPPO_DEFAULT_CONFIG
 from skrl.multi_agents.torch.mappo import MAPPO, MAPPO_DEFAULT_CONFIG
 from skrl.resources.preprocessors.torch import RunningStandardScaler  # noqa
 from skrl.resources.schedulers.torch import KLAdaptiveLR  # noqa
-from skrl.trainers.torch import SequentialTrainer, Trainer
+from skrl.trainers.torch import Trainer
 from skrl.utils import set_seed
 from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
+from ..skrl_lib.sequential import SequentialTrainer
 
 
 class Runner:
@@ -149,16 +150,16 @@ class Runner:
         action_spaces = env.action_spaces if multi_agent else {"agent": env.action_space}
 
         # Custom -> Overlap action_spaces
-        if env._unwrapped.multi_agent:
-            from gymnasium.spaces import Box
-            import numpy as np
-            new_shape = tuple([env.action_manager.last_action_dim])
-            action_spaces = {"agent": Box(
-                low=-np.inf,
-                high=np.inf,
-                shape=new_shape,
-                dtype=np.float32,
-            )}
+        # if env._unwrapped.multi_agent:
+        #     from gymnasium.spaces import Box
+        #     import numpy as np
+        #     new_shape = tuple([env.action_manager.last_action_dim])
+        #     action_spaces = {"agent": Box(
+        #         low=-np.inf,
+        #         high=np.inf,
+        #         shape=new_shape,
+        #         dtype=np.float32,
+        #     )}
 
         try:
             agent_class = self._class(cfg["agent"]["class"])
