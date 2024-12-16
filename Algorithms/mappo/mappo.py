@@ -212,12 +212,15 @@ class MAPPO(MultiAgent):
         :rtype: torch.Tensor
         """
         # # sample random actions
-        try:
-            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid])}, role="policy") for uid in
-                    self.possible_agents]
-        except:
-            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid])}, role="policy") for uid in
-                    self.possible_agents]
+        # 64,64 for frame_size in mappo_config.yaml
+        # try:
+        #     data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
+        #                                    role="policy") for uid in self.possible_agents]
+        # except:
+        #     data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid])}, role="policy") for uid in
+        #             self.possible_agents]
+        data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
+                                       role="policy") for uid in self.possible_agents]
 
 
         actions = {uid: d[0] for uid, d in zip(self.possible_agents, data)}
@@ -270,8 +273,6 @@ class MAPPO(MultiAgent):
                 # reward shaping
                 if self._rewards_shaper is not None:
                     rewards[uid] = self._rewards_shaper(rewards[uid], timestep, timesteps)
-
-                shared_states = shared_states.view(1, -1)
 
                 # compute values
                 values, _, _ = self.values[uid].act({"states": self._shared_state_preprocessor[uid](shared_states)},

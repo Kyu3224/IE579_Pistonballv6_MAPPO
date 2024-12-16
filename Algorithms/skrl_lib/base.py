@@ -292,7 +292,7 @@ class Trainer:
 
         # reset env
         states, infos = self.env.reset()
-        shared_states = self.env.state()
+        shared_states = self.env.state().view(560, 880, 3)
 
         for timestep in tqdm.tqdm(range(self.initial_timestep, self.timesteps), disable=self.disable_progressbar, file=sys.stdout):
 
@@ -315,7 +315,7 @@ class Trainer:
                 next_states, rewards, terminated, truncated, infos = self.env.step(actions)
                 shared_next_states = self.env.state()
                 infos["shared_states"] = shared_states
-                infos["shared_next_states"] = shared_next_states
+                infos["shared_next_states"] = shared_next_states.view(560, 880, 3)
 
                 # render scene
                 if not self.headless:

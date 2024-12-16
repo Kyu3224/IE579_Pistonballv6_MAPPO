@@ -1,6 +1,7 @@
 from typing import Any, Mapping, Type, Union
 
 import torch
+import torch.nn as nn
 import copy
 import yaml
 import numpy as np
@@ -11,14 +12,14 @@ from skrl.agents.torch import Agent
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
 from skrl.envs.wrappers.torch import MultiAgentEnvWrapper, Wrapper
 from skrl.memories.torch import RandomMemory
-from skrl.models.torch import Model
+from skrl.models.torch import Model, GaussianMixin, DeterministicMixin
 from skrl.multi_agents.torch.ippo import IPPO, IPPO_DEFAULT_CONFIG
-from skrl.resources.preprocessors.torch import RunningStandardScaler  # noqa
 from skrl.resources.schedulers.torch import KLAdaptiveLR  # noqa
 from skrl.trainers.torch import Trainer
 from skrl.utils import set_seed
 from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
 from ..skrl_lib.sequential import SequentialTrainer
+from ..skrl_lib.running_std_scalar import RunningStandardScaler
 from .mappo import MAPPO
 
 
@@ -166,54 +167,63 @@ class Runner:
             # non-shared models
             if _cfg["models"]["separate"]:
                 # get instantiator function and remove 'class' field
-                try:
-                    model_class = self._class(_cfg["models"]["policy"]["class"])
-                    del _cfg["models"]["policy"]["class"]
-                except KeyError:
-                    model_class = self._class("GaussianMixin")
-                    logger.warning("No 'class' field defined in 'models:policy' cfg. 'GaussianMixin' will be used as default")
+                # try:
+                #     model_class = SharedModel(env.observation_spaces[agent_id], env.action_spaces[agent_id], env.device)
+                #     # model_class = self._class(_cfg["models"]["policy"]["class"])
+                #     # del _cfg["models"]["policy"]["class"]
+                # except KeyError:
+                #     model_class = self._class("GaussianMixin")
+                #     logger.warning("No 'class' field defined in 'models:policy' cfg. 'GaussianMixin' will be used as default")
                 # print model source
-                source = model_class(
-                    observation_space=observation_spaces[agent_id],
-                    action_space=action_spaces[agent_id],
-                    device=device,
-                    **self._process_cfg(_cfg["models"]["policy"]),
-                    return_source=True,
-                )
-                print("--------------------------------------------------\n")
-                print(source)
-                print("--------------------------------------------------")
+                # source = model_class(
+                #     observation_space=observation_spaces[agent_id],
+                #     action_space=action_spaces[agent_id],
+                #     device=device,
+                #     **self._process_cfg(_cfg["models"]["policy"]),
+                #     return_source=True,
+                # )
+                # print("--------------------------------------------------\n")
+                # # print(model_class)
+                # print("--------------------------------------------------")
+                del _cfg["models"]["policy"]["class"]
                 # instantiate model
-                models[agent_id]["policy"] = model_class(
+                models[agent_id]["policy"] = SharedModel(
                     observation_space=observation_spaces[agent_id],
                     action_space=action_spaces[agent_id],
                     device=device,
                     **self._process_cfg(_cfg["models"]["policy"]),
                 )
                 # get instantiator function and remove 'class' field
-                try:
-                    model_class = self._class(_cfg["models"]["value"]["class"])
-                    del _cfg["models"]["value"]["class"]
-                except KeyError:
-                    model_class = self._class("DeterministicMixin")
-                    logger.warning("No 'class' field defined in 'models:value' cfg. 'DeterministicMixin' will be used as default")
+                # try:
+                #     # model_class = self._class(_cfg["models"]["value"]["class"])
+                #     # del _cfg["models"]["value"]["class"]
+                #     model_class = SharedModel(env.observation_spaces[agent_id], env.action_spaces[agent_id], env.device)
+                # except KeyError:
+                #     model_class = self._class("DeterministicMixin")
+                #     logger.warning("No 'class' field defined in 'models:value' cfg. 'DeterministicMixin' will be used as default")
                 # print model source
-                source = model_class(
-                    observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
-                    action_space=action_spaces[agent_id],
-                    device=device,
-                    **self._process_cfg(_cfg["models"]["value"]),
-                    return_source=True,
-                )
-                print("--------------------------------------------------\n")
-                print(source)
-                print("--------------------------------------------------")
+                # source = model_class(
+                #     observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
+                #     action_space=action_spaces[agent_id],
+                #     device=device,
+                #     **self._process_cfg(_cfg["models"]["value"]),
+                #     return_source=True,
+                # )
+                # print("--------------------------------------------------\n")
+                # print(model_class)
+                # print("--------------------------------------------------")
                 # instantiate model
-                models[agent_id]["value"] = model_class(
-                    observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
+                # models[agent_id]["value"] = model_class(
+                #     observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
+                #     action_space=action_spaces[agent_id],
+                #     device=device,
+                #     **self._process_cfg(_cfg["models"]["value"]),
+                # )
+                models[agent_id]["value"] = SharedModel(
+                    observation_space=observation_spaces[agent_id],
                     action_space=action_spaces[agent_id],
                     device=device,
-                    **self._process_cfg(_cfg["models"]["value"]),
+                    **self._process_cfg(_cfg["models"]["policy"]),
                 )
             # shared models
             else:
@@ -240,9 +250,9 @@ class Runner:
                     ],
                     return_source=True,
                 )
-                print("--------------------------------------------------\n")
-                print(source)
-                print("--------------------------------------------------")
+                # print("--------------------------------------------------\n")
+                # print(source)
+                # print("--------------------------------------------------")
                 # instantiate model
                 models[agent_id]["policy"] = model_class(
                     observation_space=observation_spaces[agent_id],
@@ -386,20 +396,81 @@ class Runner:
         else:
             raise ValueError(f"Unknown running mode: {mode}")
 
-def batchify_obs(obs, device):
-    obs = np.stack([obs[a] for a in obs], axis=0)
-    obs = obs.transpose(0, -1, 1, 2)
-    obs = torch.tensor(obs).to(device)
-    return obs
+# define the shared model
+class SharedModel(GaussianMixin, DeterministicMixin, Model):
+    def __init__(self, observation_space, action_space, device, clip_actions=False,
+                clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
+        Model.__init__(self, observation_space, action_space, device)
+        GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction, role="policy")
+        DeterministicMixin.__init__(self, clip_actions, role="value")
 
+        # shared layers/network
+        self.net = nn.Sequential(
+            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
 
-def batchify(x, device):
-    x = np.stack([x[a] for a in x], axis=0)
-    x = torch.tensor(x).to(device)
-    return x
+            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
 
+            self._layer_init(nn.Conv2d(64, 128, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+            nn.Flatten(),
+            self._layer_init(nn.Linear(128 * 8 * 8, 512)),
+            nn.ReLU(),
+        )
 
-def unbatchify(x, env):
-    x = x.cpu().numpy()
-    x = {a: x[i] for i, a in enumerate(env.possible_agents)}
-    return x
+        # shared layers/network
+        self.global_net = nn.Sequential(
+            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+
+            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+
+            self._layer_init(nn.Conv2d(64, 128, 3, padding=1)),
+            nn.MaxPool2d(2),
+            nn.ReLU(),
+            nn.Flatten(),
+            self._layer_init(nn.Linear(128 * 70 * 110, 512)),
+            nn.ReLU(),
+        )
+
+        # separated layers ("policy")
+        self.mean_layer = nn.Linear(512, self.num_actions)
+        self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
+
+        # separated layer ("value")
+        self.value_layer = nn.Linear(512, 1)
+
+    # override the .act(...) method to disambiguate its call
+    def act(self, inputs, role):
+        if role == "policy":
+            return GaussianMixin.act(self, inputs, role)
+        elif role == "value":
+            return DeterministicMixin.act(self, inputs, role)
+
+    # forward the input to compute model output according to the specified role
+    def compute(self, inputs, role):
+        if role == "policy":
+            # Add batch dimension and Change into (Batch, Channel, Height, Width)s
+            # save shared layers/network output to perform a single forward-pass
+            transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
+            self._shared_output = self.net(transformed_state)
+            return self.mean_layer(self._shared_output), self.log_std_parameter, {}
+        elif role == "value":
+            # use saved shared layers/network output to perform a single forward-pass, if it was saved
+            # shared_output = self.net(inputs["states"]) if self._shared_output is None else self._shared_output
+            transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
+            shared_output = self.global_net(transformed_state)
+            self._shared_output = None  # reset saved shared output to prevent the use of erroneous data in subsequent steps
+            return self.value_layer(shared_output), {}
+
+    def _layer_init(self, layer, std=np.sqrt(2), bias_const=0.0):
+        torch.nn.init.orthogonal_(layer.weight, std)
+        torch.nn.init.constant_(layer.bias, bias_const)
+        return layer
