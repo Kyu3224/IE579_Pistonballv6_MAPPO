@@ -4,7 +4,7 @@
 env:
   stack_size: 3             # Stack Size
   frame_size: [64, 64]       # Frame Size
-  max_cycles: 125            # 최대 사이클 수 (Maximum Cycles)
+  max_cycles: 100            # 최대 사이클 수 (Maximum Cycles)
 
 seed: 42
 
@@ -14,11 +14,11 @@ seed: 42
 models:
   separate: True
   local_cnn:
-    layers: [32, 64]
-    output: 256
+    layers: [32, 64, 128]
+    output: 512
   global_cnn:
-    layers: [32, 64]
-    output: 256
+    layers: [32, 64, 128]
+    output: 512
   policy:  # see gaussian_model parameters
     clip_actions: False
     clip_log_std: True

@@ -366,10 +366,16 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
             nn.ReLU(),
             nn.MaxPool2d(2),  # 크기 축소: 1/4
 
+            # Third Conv Layer
+            self._layer_init(nn.Conv2d(cfg['models']['local_cnn']['layers'][1],
+                                       cfg['models']['local_cnn']['layers'][2], 3, padding=1)),
+            nn.ReLU(),
+            nn.MaxPool2d(2),  # 크기 축소: 1/4
+
             nn.AdaptiveAvgPool2d((4, 4)),  # 크기를 고정: (Batch, Channels, 4, 4)
             nn.Flatten(),  # (Batch, Channels * 4 * 4)
 
-            self._layer_init(nn.Linear(cfg['models']['local_cnn']['layers'][1] * 4 * 4,
+            self._layer_init(nn.Linear(cfg['models']['local_cnn']['layers'][2] * 4 * 4,
                                        cfg['models']['local_cnn']['output'])),  # Linear 크기 축소
             nn.ReLU(),
         )
@@ -390,10 +396,16 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
             nn.ReLU(),
             nn.MaxPool2d(2),
 
+            # Third Conv Layer
+            self._layer_init(nn.Conv2d(cfg['models']['local_cnn']['layers'][1],
+                                       cfg['models']['local_cnn']['layers'][2], 3, padding=1)),
+            nn.ReLU(),
+            nn.MaxPool2d(2),  # 크기 축소: 1/4
+
             nn.AdaptiveAvgPool2d((4, 4)),  # 크기 고정
             nn.Flatten(),
 
-            self._layer_init(nn.Linear(cfg['models']['global_cnn']['layers'][1] * 4 * 4,
+            self._layer_init(nn.Linear(cfg['models']['global_cnn']['layers'][2] * 4 * 4,
                                        cfg['models']['global_cnn']['output'])),  # Linear 크기 축소
             nn.ReLU(),
         )
