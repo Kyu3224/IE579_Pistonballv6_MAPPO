@@ -212,15 +212,13 @@ class MAPPO(MultiAgent):
         :rtype: torch.Tensor
         """
         # # sample random actions
-        # # TODO: fix for stochasticity, rnn and log_prob
-        # if timestep < self._random_timesteps:
-        #     return self.policy.random_act({"states": states}, role="policy")
-
-        if isinstance(states, tuple):
-            states = states[0]
-            # sample stochastic actions
+        try:
             data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid])}, role="policy") for uid in
                     self.possible_agents]
+        except:
+            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid])}, role="policy") for uid in
+                    self.possible_agents]
+
 
         actions = {uid: d[0] for uid, d in zip(self.possible_agents, data)}
         log_prob = {uid: d[1] for uid, d in zip(self.possible_agents, data)}

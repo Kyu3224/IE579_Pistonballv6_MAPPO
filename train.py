@@ -42,7 +42,6 @@ env = frame_stack_v1(env, stack_size=stack_size)
 
 if Alg == 'mappo':
     # wrap the env
-    # Frame stack 안해서 학습 잘 안될수도
     env = wrap_env(env)
     runner = Runner(env, config)
 # Default env is set as PPO
