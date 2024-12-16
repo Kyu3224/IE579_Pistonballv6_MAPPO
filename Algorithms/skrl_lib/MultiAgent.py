@@ -84,7 +84,7 @@ class MultiAgent:
         if not directory:
             directory = os.path.join(os.getcwd(), "runs")
         if not experiment_name:
-            experiment_name = f"{datetime.datetime.now().strftime('%y-%m-%d_%H-%M-%S-%f')}_{self.__class__.__name__}"
+            experiment_name = f"{datetime.datetime.now().strftime('%m%d_%H%M')}_{self.__class__.__name__}"
         self.experiment_dir = os.path.join(directory, experiment_name)
 
     def __str__(self) -> str:
@@ -235,7 +235,7 @@ class MultiAgent:
         :param timesteps: Number of timesteps
         :type timesteps: int
         """
-        tag = str(timestep if timestep is not None else datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S-%f"))
+        tag = str(timestep if timestep is not None else datetime.datetime.now().strftime("%m%d_%H%M"))
         # separated modules
         if self.checkpoint_store_separately:
             for uid in self.possible_agents:

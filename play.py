@@ -29,7 +29,7 @@ env = color_reduction_v0(env)
 env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
-model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/PPO_4950.pt"
+model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/best_agent.pt"
 # model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':

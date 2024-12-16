@@ -137,7 +137,8 @@ class Runner:
 
         return update_dict(copy.deepcopy(cfg))
 
-    def _generate_models(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any]) -> Mapping[str, Mapping[str, Model]]:
+    def _generate_models(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any]) -> Mapping[
+        str, Mapping[str, Model]]:
         """Generate model instances according to the environment specification and the given config
 
         :param env: Wrapped environment
@@ -166,37 +167,19 @@ class Runner:
             models[agent_id] = {}
             # non-shared models
             if _cfg["models"]["separate"]:
-                # get instantiator function and remove 'class' field
-                # try:
-                #     model_class = SharedModel(env.observation_spaces[agent_id], env.action_spaces[agent_id], env.device)
-                #     # model_class = self._class(_cfg["models"]["policy"]["class"])
-                #     # del _cfg["models"]["policy"]["class"]
-                # except KeyError:
-                #     model_class = self._class("GaussianMixin")
-                #     logger.warning("No 'class' field defined in 'models:policy' cfg. 'GaussianMixin' will be used as default")
-                # print model source
-                # source = model_class(
-                #     observation_space=observation_spaces[agent_id],
-                #     action_space=action_spaces[agent_id],
-                #     device=device,
-                #     **self._process_cfg(_cfg["models"]["policy"]),
-                #     return_source=True,
-                # )
-                # print("--------------------------------------------------\n")
-                # # print(model_class)
-                # print("--------------------------------------------------")
-                del _cfg["models"]["policy"]["class"]
                 # instantiate model
                 models[agent_id]["policy"] = SharedModel(
                     observation_space=observation_spaces[agent_id],
                     action_space=action_spaces[agent_id],
                     device=device,
+                    cfg=_cfg,
                     **self._process_cfg(_cfg["models"]["policy"]),
                 )
                 models[agent_id]["value"] = SharedModel(
                     observation_space=observation_spaces[agent_id],
                     action_space=action_spaces[agent_id],
                     device=device,
+                    cfg=_cfg,
                     **self._process_cfg(_cfg["models"]["policy"]),
                 )
             # shared models
@@ -205,28 +188,14 @@ class Runner:
                 try:
                     del _cfg["models"]["policy"]["class"]
                 except KeyError:
-                    logger.warning("No 'class' field defined in 'models:policy' cfg. 'GaussianMixin' will be used as default")
+                    logger.warning(
+                        "No 'class' field defined in 'models:policy' cfg. 'GaussianMixin' will be used as default")
                 try:
                     del _cfg["models"]["value"]["class"]
                 except KeyError:
-                    logger.warning("No 'class' field defined in 'models:value' cfg. 'DeterministicMixin' will be used as default")
+                    logger.warning(
+                        "No 'class' field defined in 'models:value' cfg. 'DeterministicMixin' will be used as default")
                 model_class = self._class("Shared")
-                # print model source
-                source = model_class(
-                    observation_space=observation_spaces[agent_id],
-                    action_space=action_spaces[agent_id],
-                    device=device,
-                    structure=None,
-                    roles=["policy", "value"],
-                    parameters=[
-                        self._process_cfg(_cfg["models"]["policy"]),
-                        self._process_cfg(_cfg["models"]["value"]),
-                    ],
-                    return_source=True,
-                )
-                # print("--------------------------------------------------\n")
-                # print(source)
-                # print("--------------------------------------------------")
                 # instantiate model
                 models[agent_id]["policy"] = model_class(
                     observation_space=observation_spaces[agent_id],
@@ -243,7 +212,8 @@ class Runner:
 
         return models
 
-    def _generate_agent(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any], models: Mapping[str, Mapping[str, Model]]) -> Agent:
+    def _generate_agent(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any],
+                        models: Mapping[str, Mapping[str, Model]]) -> Agent:
         """Generate agent instance according to the environment specification and the given config and models
 
         :param env: Wrapped environment
@@ -260,10 +230,10 @@ class Runner:
         observation_spaces = env.observation_spaces if multi_agent else {"agent": env.observation_space}
         action_spaces = env.action_spaces if multi_agent else {"agent": env.action_space}
 
-
         # check for memory configuration (backward compatibility)
         if not "memory" in cfg:
-            logger.warning("Deprecation warning: No 'memory' field defined in cfg. Using the default generated configuration")
+            logger.warning(
+                "Deprecation warning: No 'memory' field defined in cfg. Using the default generated configuration")
             cfg["memory"] = {"class": "RandomMemory", "memory_size": -1}
         # get memory class and remove 'class' field
         try:
@@ -337,7 +307,8 @@ class Runner:
             }
         return agent_class(cfg=agent_cfg, device=device, **agent_kwargs)
 
-    def _generate_trainer(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any], agent: Agent) -> Trainer:
+    def _generate_trainer(self, env: Union[Wrapper, MultiAgentEnvWrapper], cfg: Mapping[str, Any],
+                          agent: Agent) -> Trainer:
         """Generate trainer instance according to the environment specification and the given config and agent
 
         :param env: Wrapped environment
@@ -370,54 +341,69 @@ class Runner:
         else:
             raise ValueError(f"Unknown running mode: {mode}")
 
+
 # define the shared model
 class SharedModel(GaussianMixin, DeterministicMixin, Model):
-    def __init__(self, observation_space, action_space, device, clip_actions=False,
-                clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
+    def __init__(self, observation_space, action_space, device, cfg, clip_actions=False,
+                 clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum", ):
         Model.__init__(self, observation_space, action_space, device)
         GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction, role="policy")
         DeterministicMixin.__init__(self, clip_actions, role="value")
 
+        self.cfg = cfg
         # shared layers/network
         self.net = nn.Sequential(
-            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),  # Conv 레이어 1
+            # First Conv Layer
+            self._layer_init(nn.Conv2d(3,
+                                       cfg['models']['local_cnn']['layers'][0],
+                                       3, padding=1)),
             nn.ReLU(),
-            nn.MaxPool2d(2),  # 크기 축소: 1/2
+            nn.MaxPool2d(2),
 
-            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),  # Conv 레이어 2
+            # Second Conv Layer
+            self._layer_init(nn.Conv2d(cfg['models']['local_cnn']['layers'][0],
+                                       cfg['models']['local_cnn']['layers'][1], 3, padding=1)),
             nn.ReLU(),
             nn.MaxPool2d(2),  # 크기 축소: 1/4
 
             nn.AdaptiveAvgPool2d((4, 4)),  # 크기를 고정: (Batch, Channels, 4, 4)
             nn.Flatten(),  # (Batch, Channels * 4 * 4)
 
-            self._layer_init(nn.Linear(64 * 4 * 4, 256)),  # Linear 크기 축소
+            self._layer_init(nn.Linear(cfg['models']['local_cnn']['layers'][1] * 4 * 4,
+                                       cfg['models']['local_cnn']['output'])),  # Linear 크기 축소
             nn.ReLU(),
         )
 
         # 글로벌 네트워크 동일하게 변경
         self.global_net = nn.Sequential(
-            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),  # Conv 레이어 1
+            # First Conv Layer
+            self._layer_init(nn.Conv2d(3,
+                                       cfg['models']['global_cnn']['layers'][0],
+                                       3, padding=1)),
             nn.ReLU(),
             nn.MaxPool2d(2),
 
-            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),  # Conv 레이어 2
+            # Second Conv Layer
+            self._layer_init(nn.Conv2d(cfg['models']['global_cnn']['layers'][0],
+                                       cfg['models']['global_cnn']['layers'][1],
+                                       3, padding=1)),
             nn.ReLU(),
             nn.MaxPool2d(2),
 
             nn.AdaptiveAvgPool2d((4, 4)),  # 크기 고정
             nn.Flatten(),
 
-            self._layer_init(nn.Linear(64 * 4 * 4, 256)),  # Linear 크기 축소
+            self._layer_init(nn.Linear(cfg['models']['global_cnn']['layers'][1] * 4 * 4,
+                                       cfg['models']['global_cnn']['output'])),  # Linear 크기 축소
             nn.ReLU(),
         )
 
         # separated layers ("policy")
-        self.mean_layer = nn.Linear(256, self.num_actions)
+        self.mean_layer = nn.Linear(cfg['models']['global_cnn']['output'], self.num_actions)
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
         # separated layer ("value")
-        self.value_layer = nn.Linear(256, 1)
+        self.value_layer = nn.Linear(cfg['models']['global_cnn']['output'], 1)
 
     # override the .act(...) method to disambiguate its call
     def act(self, inputs, role):
@@ -439,7 +425,6 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
             return self.mean_layer(self._shared_output), self.log_std_parameter, {}
         elif role == "value":
             # use saved shared layers/network output to perform a single forward-pass, if it was saved
-            # shared_output = self.net(inputs["states"]) if self._shared_output is None else self._shared_output
             if inputs["states"].dim() == 4:
                 transformed_state = inputs["states"].permute(0, 3, 1, 2)
             else:

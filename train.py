@@ -15,14 +15,14 @@ from Algorithms.ppo.ppo import PPO
 from Algorithms.mappo.mappo_agent import Runner
 
 parser = argparse.ArgumentParser(description='Choose the RL algorithm')
-parser.add_argument('--alg', type=str, default='ppo', choices=['mappo', 'ppo'],
+parser.add_argument('--alg', type=str, default='ppo', choices=['MAPPO', 'ppo'],
                     help="Specify the RL algorithm to use: 'mappo' or 'ppo'. Default is 'ppo'.")
 
 args = parser.parse_args()
 
 Alg = args.alg
 
-with open(f'./Algorithms/{Alg}/{Alg}_config.yaml') as f:
+with open(f'./Algorithms/{Alg.lower()}/{Alg.lower()}_config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 # Hyperparameters for env.
@@ -34,6 +34,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from datetime import datetime
 
 current_time = datetime.now().strftime("%m%d_%H%M")
+experiment_dir = f"{config['agent']['experiment']['directory']}/{current_time}_{Alg}/{Alg.lower()}_config.yaml"
 
 # Initialize environment
 env = pistonball_v6.parallel_env(
@@ -46,10 +47,13 @@ env = color_reduction_v0(env)
 env = resize_v1(env, frame_size[0], frame_size[1])
 env = frame_stack_v1(env, stack_size=stack_size)
 
-if Alg == 'mappo':
+if Alg == 'MAPPO':
     # wrap the env
     env = wrap_env(env)
     runner = Runner(env, config)
+    # Save Yaml files
+    with open(experiment_dir, 'w') as f:
+        yaml.dump(config, f)
 # Default env is set as PPO
 else:
     runner = PPO(env)

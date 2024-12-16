@@ -213,14 +213,16 @@ class MAPPO(MultiAgent):
         """
         # # sample random actions
         # 64,64 for frame_size in mappo_config.yaml
-        # try:
-        #     data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
-        #                                    role="policy") for uid in self.possible_agents]
-        # except:
-        #     data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid])}, role="policy") for uid in
-        #             self.possible_agents]
-        data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
-                                       role="policy") for uid in self.possible_agents]
+        try:
+            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
+                                           role="policy") for uid in self.possible_agents]
+        except:
+            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid].view(64, 64, -1))}, role="policy") for uid in
+                    self.possible_agents]
+
+        # Train
+        # data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
+        #                                role="policy") for uid in self.possible_agents]
 
 
         actions = {uid: d[0] for uid, d in zip(self.possible_agents, data)}
