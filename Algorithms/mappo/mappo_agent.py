@@ -1,5 +1,6 @@
 from typing import Any, Mapping, Type, Union
 
+import torch
 import copy
 import yaml
 import numpy as np
@@ -384,3 +385,21 @@ class Runner:
             self._trainer.eval()
         else:
             raise ValueError(f"Unknown running mode: {mode}")
+
+def batchify_obs(obs, device):
+    obs = np.stack([obs[a] for a in obs], axis=0)
+    obs = obs.transpose(0, -1, 1, 2)
+    obs = torch.tensor(obs).to(device)
+    return obs
+
+
+def batchify(x, device):
+    x = np.stack([x[a] for a in x], axis=0)
+    x = torch.tensor(x).to(device)
+    return x
+
+
+def unbatchify(x, env):
+    x = x.cpu().numpy()
+    x = {a: x[i] for i, a in enumerate(env.possible_agents)}
+    return x

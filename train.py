@@ -1,5 +1,6 @@
 import yaml
 import torch
+import argparse
 
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
@@ -13,8 +14,13 @@ from Algorithms.ppo.ppo_agent import Agent
 from Algorithms.ppo.ppo import PPO
 from Algorithms.mappo.mappo_agent import Runner
 
-Alg = 'mappo'
-# Alg = 'ppo'
+parser = argparse.ArgumentParser(description='Choose the RL algorithm')
+parser.add_argument('--alg', type=str, default='ppo', choices=['mappo', 'ppo'],
+                    help="Specify the RL algorithm to use: 'mappo' or 'ppo'. Default is 'ppo'.")
+
+args = parser.parse_args()
+
+Alg = args.alg
 
 with open(f'./Algorithms/{Alg}/{Alg}_config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)

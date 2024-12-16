@@ -1,5 +1,6 @@
 import torch
 import yaml
+import argparse
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
 from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming Agent and helper functions are in agent.py
@@ -7,8 +8,13 @@ from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming
 from skrl.envs.wrappers.torch import wrap_env
 from Algorithms.mappo.mappo_agent import Runner
 
-# Alg = 'mappo'
-Alg = 'ppo'
+parser = argparse.ArgumentParser(description='Choose the RL algorithm')
+parser.add_argument('--alg', type=str, default='ppo', choices=['mappo', 'ppo'],
+                    help="Specify the RL algorithm to use: 'mappo' or 'ppo'. Default is 'ppo'.")
+
+args = parser.parse_args()
+
+Alg = args.alg
 
 with open(f'./Algorithms/{Alg}/{Alg}_config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -34,8 +40,9 @@ if Alg == 'mappo':
     while not done:
         with torch.inference_mode():
             actions = runner.agent.act(obs, timestep=0, timesteps=0)
-            action_processed = {key: torch.argmax(value).item() for key, value in actions[0].items()}
-            obs, reward, terminated, truncated, info = env.step(actions=action_processed)
+            actions_processed = {key: torch.argmax(value).item() for key, value in actions[0].items()}
+            # actions = {key: value.unsqueeze(0) for key, value in zip(list(actions.keys()), actions)}
+            obs, reward, terminated, truncated, info = env.step(actions=actions_processed)
 
     env.close()
 else:

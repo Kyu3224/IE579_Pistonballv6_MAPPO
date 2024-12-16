@@ -90,4 +90,4 @@ trainer:
   environment_info: log
 
 log:
-  use_wandb: False
+  use_wandb: True
