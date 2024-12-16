@@ -7,22 +7,24 @@ from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming
 from skrl.envs.wrappers.torch import wrap_env
 from Algorithms.mappo.mappo_agent import Runner
 
+Alg = 'mappo'
+# Alg = 'ppo'
+
+with open(f'./Algorithms/{Alg}/{Alg}_config.yaml') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+
+stack_size = config['env']['stack_size']
+
 # Load trained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Initialize environment
 env = pistonball_v6.parallel_env(render_mode="human", continuous=False)
 env = color_reduction_v0(env)
 env = resize_v1(env, 64, 64)
-env = frame_stack_v1(env, stack_size=4)
-
-Alg = 'mappo'
-# Alg = 'ppo'
-
-with open(f'./Algorithms/mappo/mappo_config.yaml') as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+env = frame_stack_v1(env, stack_size=stack_size)
 
 # model_path ="/home/kyu/Desktop/workspace/marl_project/logs/ppo/1211_2132/4950_iter.pt"
-model_path="/home/kyu/Desktop/workspace/marl_project/piston_push/24-12-14_21-14-28-235162_MAPPO/checkpoints/agent_480.pt"
+model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':
     env = wrap_env(env)
@@ -31,8 +33,9 @@ if Alg == 'mappo':
     obs = env.reset()
     while not done:
         with torch.inference_mode():
-            action = runner.agent.act(obs, timestep=0, timesteps=0)
-            obs, reward, done, info = env.step(action)
+            actions = runner.agent.act(obs, timestep=0, timesteps=0)
+            action_processed = {key: torch.argmax(value).item() for key, value in actions[0].items()}
+            obs, reward, done, info = env.step(actions=action_processed)
 
     env.close()
 else:

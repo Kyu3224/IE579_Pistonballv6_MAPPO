@@ -56,7 +56,7 @@ class MAPPO(MultiAgent):
         :param shared_observation_spaces: Shared observation/state space or shape (default: ``None``)
         :type shared_observation_spaces: dictionary of int, sequence of int, gym.Space or gymnasium.Space, optional
         """
-        with open("Algorithms/ppo/ppo_config.yaml") as f:
+        with open("Algorithms/mappo/mappo_config.yaml") as f:
             _cfg = yaml.safe_load(f)
         _cfg.update(cfg if cfg is not None else {})
         super().__init__(possible_agents=possible_agents,

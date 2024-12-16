@@ -88,3 +88,6 @@ trainer:
   class: SequentialTrainer
   timesteps: 1600
   environment_info: log
+
+log:
+  use_wandb: False

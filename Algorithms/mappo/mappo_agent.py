@@ -331,9 +331,8 @@ class Runner:
                 "possible_agents": possible_agents,
             }
         elif agent_class in [MAPPO]:
-            with open("Algorithms/ppo/ppo_config.yaml") as r:
+            with open("Algorithms/mappo/mappo_config.yaml") as r:
                 agent_cfg = yaml.safe_load(r)
-            # agent_cfg = MAPPO_DEFAULT_CONFIG.copy()
             agent_cfg.update(self._process_cfg(cfg["agent"]))
             agent_cfg["state_preprocessor_kwargs"].update({
                 agent_id: {"size": observation_spaces[agent_id], "device": device}
