@@ -193,32 +193,6 @@ class Runner:
                     device=device,
                     **self._process_cfg(_cfg["models"]["policy"]),
                 )
-                # get instantiator function and remove 'class' field
-                # try:
-                #     # model_class = self._class(_cfg["models"]["value"]["class"])
-                #     # del _cfg["models"]["value"]["class"]
-                #     model_class = SharedModel(env.observation_spaces[agent_id], env.action_spaces[agent_id], env.device)
-                # except KeyError:
-                #     model_class = self._class("DeterministicMixin")
-                #     logger.warning("No 'class' field defined in 'models:value' cfg. 'DeterministicMixin' will be used as default")
-                # print model source
-                # source = model_class(
-                #     observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
-                #     action_space=action_spaces[agent_id],
-                #     device=device,
-                #     **self._process_cfg(_cfg["models"]["value"]),
-                #     return_source=True,
-                # )
-                # print("--------------------------------------------------\n")
-                # print(model_class)
-                # print("--------------------------------------------------")
-                # instantiate model
-                # models[agent_id]["value"] = model_class(
-                #     observation_space=(state_spaces if agent_class in [MAPPO] else observation_spaces)[agent_id],
-                #     action_space=action_spaces[agent_id],
-                #     device=device,
-                #     **self._process_cfg(_cfg["models"]["value"]),
-                # )
                 models[agent_id]["value"] = SharedModel(
                     observation_space=observation_spaces[agent_id],
                     action_space=action_spaces[agent_id],
@@ -406,46 +380,44 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
 
         # shared layers/network
         self.net = nn.Sequential(
-            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),
-            nn.MaxPool2d(2),
+            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),  # Conv 레이어 1
             nn.ReLU(),
+            nn.MaxPool2d(2),  # 크기 축소: 1/2
 
-            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),
-            nn.MaxPool2d(2),
+            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),  # Conv 레이어 2
             nn.ReLU(),
+            nn.MaxPool2d(2),  # 크기 축소: 1/4
 
-            self._layer_init(nn.Conv2d(64, 128, 3, padding=1)),
-            nn.MaxPool2d(2),
-            nn.ReLU(),
-            nn.Flatten(),
-            self._layer_init(nn.Linear(128 * 8 * 8, 512)),
+            nn.AdaptiveAvgPool2d((4, 4)),  # 크기를 고정: (Batch, Channels, 4, 4)
+            nn.Flatten(),  # (Batch, Channels * 4 * 4)
+
+            self._layer_init(nn.Linear(64 * 4 * 4, 256)),  # Linear 크기 축소
             nn.ReLU(),
         )
 
-        # shared layers/network
+        # 글로벌 네트워크 동일하게 변경
         self.global_net = nn.Sequential(
-            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),
-            nn.MaxPool2d(2),
+            self._layer_init(nn.Conv2d(3, 32, 3, padding=1)),  # Conv 레이어 1
             nn.ReLU(),
+            nn.MaxPool2d(2),
 
-            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),
-            nn.MaxPool2d(2),
+            self._layer_init(nn.Conv2d(32, 64, 3, padding=1)),  # Conv 레이어 2
             nn.ReLU(),
+            nn.MaxPool2d(2),
 
-            self._layer_init(nn.Conv2d(64, 128, 3, padding=1)),
-            nn.MaxPool2d(2),
-            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((4, 4)),  # 크기 고정
             nn.Flatten(),
-            self._layer_init(nn.Linear(128 * 70 * 110, 512)),
+
+            self._layer_init(nn.Linear(64 * 4 * 4, 256)),  # Linear 크기 축소
             nn.ReLU(),
         )
 
         # separated layers ("policy")
-        self.mean_layer = nn.Linear(512, self.num_actions)
+        self.mean_layer = nn.Linear(256, self.num_actions)
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
         # separated layer ("value")
-        self.value_layer = nn.Linear(512, 1)
+        self.value_layer = nn.Linear(256, 1)
 
     # override the .act(...) method to disambiguate its call
     def act(self, inputs, role):
@@ -459,13 +431,20 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
         if role == "policy":
             # Add batch dimension and Change into (Batch, Channel, Height, Width)s
             # save shared layers/network output to perform a single forward-pass
-            transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
+            if inputs["states"].dim() == 4:
+                transformed_state = inputs["states"].permute(0, 3, 1, 2)
+            else:
+                transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
             self._shared_output = self.net(transformed_state)
             return self.mean_layer(self._shared_output), self.log_std_parameter, {}
         elif role == "value":
             # use saved shared layers/network output to perform a single forward-pass, if it was saved
             # shared_output = self.net(inputs["states"]) if self._shared_output is None else self._shared_output
-            transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
+            if inputs["states"].dim() == 4:
+                transformed_state = inputs["states"].permute(0, 3, 1, 2)
+            else:
+                transformed_state = inputs["states"].unsqueeze(0).permute(0, 3, 1, 2)
+
             shared_output = self.global_net(transformed_state)
             self._shared_output = None  # reset saved shared output to prevent the use of erroneous data in subsequent steps
             return self.value_layer(shared_output), {}

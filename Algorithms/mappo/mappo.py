@@ -430,8 +430,8 @@ class MAPPO(MultiAgent):
                     sampled_states = sampled_states.reshape(self._rollouts, -1)
                     sampled_shared_states = sampled_shared_states.reshape(self._rollouts, -1)
 
-                    sampled_states = self._state_preprocessor[uid](sampled_states, train=not epoch)
-                    sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states, train=not epoch)
+                    sampled_states = self._state_preprocessor[uid](sampled_states.view(-1, 64, 64, 3), train=not epoch)
+                    sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states.view(-1, 560, 880, 3), train=not epoch)
 
                     _, next_log_prob, _ = policy.act({"states": sampled_states, "taken_actions": sampled_actions},
                                                      role="policy")

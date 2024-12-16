@@ -314,8 +314,9 @@ class Trainer:
                 # step the environments
                 next_states, rewards, terminated, truncated, infos = self.env.step(actions)
                 shared_next_states = self.env.state()
+                shared_next_states = shared_next_states.view(560, 880, 3)
                 infos["shared_states"] = shared_states
-                infos["shared_next_states"] = shared_next_states.view(560, 880, 3)
+                infos["shared_next_states"] = shared_next_states
 
                 # render scene
                 if not self.headless:
@@ -345,7 +346,7 @@ class Trainer:
             with torch.no_grad():
                 if not self.env.agents:
                     states, infos = self.env.reset()
-                    shared_states = self.env.state()
+                    shared_states = self.env.state().view(560, 880, 3)
                 else:
                     states = next_states
                     shared_states = shared_next_states
