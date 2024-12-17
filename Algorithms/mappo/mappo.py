@@ -19,8 +19,7 @@ from skrl.resources.schedulers.torch import KLAdaptiveLR
 
 from Algorithms.skrl_lib.MultiAgent import MultiAgent
 from Algorithms.skrl_lib.memory import Memory
-
-GRAYSCALE_WEIGHTS = torch.tensor([0.299, 0.587, 0.114],device="cuda:0")
+from Algorithms.skrl_lib.base import color_reduction
 
 class MAPPO(MultiAgent):
     def __init__(self,
@@ -162,7 +161,8 @@ class MAPPO(MultiAgent):
 
             if self._shared_state_preprocessor[uid] is not None:
                 self._shared_state_preprocessor[uid] = self._shared_state_preprocessor[uid](
-                    **self._shared_state_preprocessor_kwargs[uid])
+                    **self._shared_state_preprocessor_kwargs[uid],
+                    dim=self._shared_state_preprocessor_kwargs['dim'])
                 self.checkpoint_modules[uid]["shared_state_preprocessor"] = self._shared_state_preprocessor[uid]
             else:
                 self._shared_state_preprocessor[uid] = self._empty_preprocessor
@@ -297,7 +297,7 @@ class MAPPO(MultiAgent):
                 shared_states = shared_states.view(1,
                                                    self.shared_observation_spaces['piston_0'].shape[0],
                                                    self.shared_observation_spaces['piston_0'].shape[1],
-                                                   self.shared_observation_spaces['piston_0'].shape[2])
+                                                   self.cfg['models']['global_cnn']['input_channel'])
 
                 # storage transition in memory
                 self.memories[uid].add_samples(states=states[uid], actions=actions[uid], rewards=rewards[uid],
@@ -392,9 +392,6 @@ class MAPPO(MultiAgent):
         std = 0
         learning_rate = 0
 
-        import time
-        start = time.time()
-
         for uid in self.possible_agents:
             policy = self.policies[uid]
             value = self.values[uid]
@@ -444,11 +441,9 @@ class MAPPO(MultiAgent):
                                                                                        self.cfg['env']['frame_size'][1],
                                                                                        self.cfg['env']['stack_size']),
                                                                    train=not epoch)
-                    sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states.view(-1,
-                                                                                                            560,
-                                                                                                            480,
-                                                                                                            3),
-                                                                                 train=not epoch)
+                    sampled_shared_states = self._shared_state_preprocessor[uid](
+                        sampled_shared_states.view(16, 560, 480, 3)[..., 0:1],
+                        train=not epoch)
 
                     _, next_log_prob, _ = policy.act({"states": sampled_states,
                                                       "taken_actions": sampled_actions.unsqueeze(-1)},
@@ -540,8 +535,6 @@ class MAPPO(MultiAgent):
             entropy_loss += cumulative_entropy_loss / (self._learning_epochs[uid] * self._mini_batches[uid])
             std += policy.distribution(role="policy").stddev.mean().item()
             learning_rate += self.schedulers[uid].get_last_lr()[0]
-
-        print(f"{time.time() - start:.2f}s")
 
         wandb.log({
             "policy_loss": policy_loss / 20,

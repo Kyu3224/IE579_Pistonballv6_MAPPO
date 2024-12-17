@@ -24,13 +24,16 @@ stack_size = config['env']['stack_size']
 # Load trained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Initialize environment
-env = pistonball_v6.parallel_env(render_mode="human", continuous=False)
+env = pistonball_v6.parallel_env(
+    n_pistons=10,
+    render_mode="human",
+    continuous=False)
 env = color_reduction_v0(env)
 env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
-model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/best_agent.pt"
-model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1217_0111_MAPPO/best_agent.pt"
+model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/100_iter.pt"
+# model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1217_0111_MAPPO/best_agent.pt"
 # model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':
