@@ -20,6 +20,8 @@ from skrl.resources.schedulers.torch import KLAdaptiveLR
 from Algorithms.skrl_lib.MultiAgent import MultiAgent
 from Algorithms.skrl_lib.memory import Memory
 
+GRAYSCALE_WEIGHTS = torch.tensor([0.299, 0.587, 0.114],device="cuda:0")
+
 class MAPPO(MultiAgent):
     def __init__(self,
                  possible_agents: Sequence[str],
@@ -390,6 +392,9 @@ class MAPPO(MultiAgent):
         std = 0
         learning_rate = 0
 
+        import time
+        start = time.time()
+
         for uid in self.possible_agents:
             policy = self.policies[uid]
             value = self.values[uid]
@@ -441,7 +446,7 @@ class MAPPO(MultiAgent):
                                                                    train=not epoch)
                     sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states.view(-1,
                                                                                                             560,
-                                                                                                            880,
+                                                                                                            480,
                                                                                                             3),
                                                                                  train=not epoch)
 
@@ -536,6 +541,7 @@ class MAPPO(MultiAgent):
             std += policy.distribution(role="policy").stddev.mean().item()
             learning_rate += self.schedulers[uid].get_last_lr()[0]
 
+        print(f"{time.time() - start:.2f}s")
 
         wandb.log({
             "policy_loss": policy_loss / 20,

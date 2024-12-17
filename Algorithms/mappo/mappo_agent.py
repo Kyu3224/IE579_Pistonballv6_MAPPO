@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import copy
 import yaml
-import numpy as np
+import math
 from gymnasium.spaces import Box
 
 from skrl import logger
@@ -447,7 +447,7 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
             self._shared_output = None  # reset saved shared output to prevent the use of erroneous data in subsequent steps
             return self.value_layer(shared_output), {}
 
-    def _layer_init(self, layer, std=np.sqrt(2), bias_const=0.0):
+    def _layer_init(self, layer, std=torch.tensor(math.sqrt(2), dtype=torch.float32), bias_const=0.0):
         torch.nn.init.orthogonal_(layer.weight, std)
         torch.nn.init.constant_(layer.bias, bias_const)
         return layer

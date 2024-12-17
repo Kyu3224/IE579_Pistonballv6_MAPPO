@@ -42,6 +42,7 @@ except:
 
 # Initialize environment
 env = pistonball_v6.parallel_env(
+    n_pistons=10,
     render_mode="rgb_array",
     continuous=False,
     max_cycles=max_cycles
