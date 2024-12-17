@@ -14,11 +14,11 @@ from datetime import datetime
 import wandb
 
 from skrl import config, logger
-from skrl.memories.torch import Memory
 from skrl.models.torch import Model
-from Algorithms.skrl_lib.MultiAgent import MultiAgent
 from skrl.resources.schedulers.torch import KLAdaptiveLR
 
+from Algorithms.skrl_lib.MultiAgent import MultiAgent
+from Algorithms.skrl_lib.memory import Memory
 
 class MAPPO(MultiAgent):
     def __init__(self,
@@ -152,7 +152,8 @@ class MAPPO(MultiAgent):
 
             # set up preprocessors
             if self._state_preprocessor[uid] is not None:
-                self._state_preprocessor[uid] = self._state_preprocessor[uid](**self._state_preprocessor_kwargs[uid])
+                self._state_preprocessor[uid] = self._state_preprocessor[uid](**self._state_preprocessor_kwargs[uid],
+                                                                              dim=self._state_preprocessor_kwargs['dim'])
                 self.checkpoint_modules[uid]["state_preprocessor"] = self._state_preprocessor[uid]
             else:
                 self._state_preprocessor[uid] = self._empty_preprocessor
@@ -179,7 +180,8 @@ class MAPPO(MultiAgent):
         # create tensors in memories
         if self.memories:
             for uid in self.possible_agents:
-                self.memories[uid].create_tensor(name="states", size=self.observation_spaces[uid], dtype=torch.float32)
+                self.memories[uid].create_tensor(name="states", size=self.observation_spaces[uid], dtype=torch.float32,
+                                                 dim=self.cfg['env']['stack_size'])
                 self.memories[uid].create_tensor(name="shared_states", size=self.shared_observation_spaces[uid],
                                                  dtype=torch.float32)
                 self.memories[uid].create_tensor(name="actions", size=self.action_spaces[uid], dtype=torch.float32)
@@ -287,9 +289,9 @@ class MAPPO(MultiAgent):
 
                 # Resizing
                 states[uid] = states[uid].view(1,
-                                               self.observation_spaces['piston_0'].shape[0],
-                                               self.observation_spaces['piston_0'].shape[1],
-                                               self.observation_spaces['piston_0'].shape[2])
+                                               self.cfg['env']['frame_size'][0],
+                                               self.cfg['env']['frame_size'][1],
+                                               self.cfg['env']['stack_size'])
                 shared_states = shared_states.view(1,
                                                    self.shared_observation_spaces['piston_0'].shape[0],
                                                    self.shared_observation_spaces['piston_0'].shape[1],
@@ -432,10 +434,19 @@ class MAPPO(MultiAgent):
                     sampled_states = sampled_states.reshape(self._rollouts, -1)
                     sampled_shared_states = sampled_shared_states.reshape(self._rollouts, -1)
 
-                    sampled_states = self._state_preprocessor[uid](sampled_states.view(-1, 64, 64, 3), train=not epoch)
-                    sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states.view(-1, 560, 880, 3), train=not epoch)
+                    sampled_states = self._state_preprocessor[uid](sampled_states.view(-1,
+                                                                                       self.cfg['env']['frame_size'][0],
+                                                                                       self.cfg['env']['frame_size'][1],
+                                                                                       self.cfg['env']['stack_size']),
+                                                                   train=not epoch)
+                    sampled_shared_states = self._shared_state_preprocessor[uid](sampled_shared_states.view(-1,
+                                                                                                            560,
+                                                                                                            880,
+                                                                                                            3),
+                                                                                 train=not epoch)
 
-                    _, next_log_prob, _ = policy.act({"states": sampled_states, "taken_actions": sampled_actions},
+                    _, next_log_prob, _ = policy.act({"states": sampled_states,
+                                                      "taken_actions": sampled_actions.unsqueeze(-1)},
                                                      role="policy")
 
                     # compute approximate KL divergence

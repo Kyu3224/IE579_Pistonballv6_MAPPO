@@ -292,7 +292,7 @@ class Trainer:
 
         # reset env
         states, infos = self.env.reset()
-        shared_states = self.env.state().view(560, 880, 3)
+        shared_states = self.env.state().view(560, 880, -1)
 
         for timestep in tqdm.tqdm(range(self.initial_timestep, self.timesteps), disable=self.disable_progressbar, file=sys.stdout):
 
@@ -314,7 +314,7 @@ class Trainer:
                 # step the environments
                 next_states, rewards, terminated, truncated, infos = self.env.step(actions)
                 shared_next_states = self.env.state()
-                shared_next_states = shared_next_states.view(560, 880, 3)
+                shared_next_states = shared_next_states.view(560, 880, -1)
                 infos["shared_states"] = shared_states
                 infos["shared_next_states"] = shared_next_states
 
@@ -346,7 +346,7 @@ class Trainer:
             with torch.no_grad():
                 if not self.env.agents:
                     states, infos = self.env.reset()
-                    shared_states = self.env.state().view(560, 880, 3)
+                    shared_states = self.env.state().view(560, 880, -1)
                 else:
                     states = next_states
                     shared_states = shared_next_states

@@ -30,6 +30,7 @@ env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
 model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/best_agent.pt"
+model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1217_0111_MAPPO/best_agent.pt"
 # model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':

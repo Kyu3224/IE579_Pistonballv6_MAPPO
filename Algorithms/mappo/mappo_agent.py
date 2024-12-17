@@ -11,15 +11,16 @@ from skrl import logger
 from skrl.agents.torch import Agent
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
 from skrl.envs.wrappers.torch import MultiAgentEnvWrapper, Wrapper
-from skrl.memories.torch import RandomMemory
 from skrl.models.torch import Model, GaussianMixin, DeterministicMixin
 from skrl.multi_agents.torch.ippo import IPPO, IPPO_DEFAULT_CONFIG
 from skrl.resources.schedulers.torch import KLAdaptiveLR  # noqa
 from skrl.trainers.torch import Trainer
 from skrl.utils import set_seed
 from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
-from ..skrl_lib.sequential import SequentialTrainer
-from ..skrl_lib.running_std_scalar import RunningStandardScaler
+
+from Algorithms.skrl_lib.random_memory import RandomMemory
+from Algorithms.skrl_lib.sequential import SequentialTrainer
+from Algorithms.skrl_lib.running_std_scalar import RunningStandardScaler
 from .mappo import MAPPO
 
 
@@ -354,7 +355,7 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
         # shared layers/network
         self.net = nn.Sequential(
             # First Conv Layer
-            self._layer_init(nn.Conv2d(3,
+            self._layer_init(nn.Conv2d(cfg['models']['local_cnn']['input_channel'],
                                        cfg['models']['local_cnn']['layers'][0],
                                        3, padding=1)),
             nn.ReLU(),
@@ -383,7 +384,7 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
         # 글로벌 네트워크 동일하게 변경
         self.global_net = nn.Sequential(
             # First Conv Layer
-            self._layer_init(nn.Conv2d(3,
+            self._layer_init(nn.Conv2d(cfg['models']['global_cnn']['input_channel'],
                                        cfg['models']['global_cnn']['layers'][0],
                                        3, padding=1)),
             nn.ReLU(),

@@ -1,10 +1,12 @@
 # MAPPO Configuration
 
+cnn_input: &cnn_input 4
+
 # Environment Settings
 env:
-  stack_size: 3             # Stack Size
+  stack_size: *cnn_input             # Stack Size
   frame_size: [64, 64]       # Frame Size
-  max_cycles: 100            # 최대 사이클 수 (Maximum Cycles)
+  max_cycles: 125            # 최대 사이클 수 (Maximum Cycles)
 
 seed: 42
 
@@ -14,9 +16,11 @@ seed: 42
 models:
   separate: True
   local_cnn:
+    input_channel: *cnn_input
     layers: [32, 64, 128]
     output: 512
   global_cnn:
+    input_channel: 3
     layers: [32, 64, 128]
     output: 512
   policy:  # see gaussian_model parameters
@@ -49,7 +53,8 @@ agent:
   learning_rate_scheduler_kwargs:
     kl_threshold: 0.01
   state_preprocessor: RunningStandardScaler
-  state_preprocessor_kwargs: null
+  state_preprocessor_kwargs:
+    dim: *cnn_input
   shared_state_preprocessor: RunningStandardScaler
   shared_state_preprocessor_kwargs: null
   value_preprocessor: RunningStandardScaler
@@ -77,7 +82,7 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 1600
+  timesteps: 10000
   environment_info: log
 
 log:

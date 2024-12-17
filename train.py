@@ -1,6 +1,7 @@
 import yaml
 import torch
 import argparse
+import os
 
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
@@ -34,7 +35,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from datetime import datetime
 
 current_time = datetime.now().strftime("%m%d_%H%M")
-experiment_dir = f"{config['agent']['experiment']['directory']}/{current_time}_{Alg}/{Alg.lower()}_config.yaml"
+try:
+    experiment_dir = f"{config['agent']['experiment']['directory']}/{current_time}_{Alg}/{Alg.lower()}_config.yaml"
+except:
+    experiment_dir = f"piston_push/{current_time}_{Alg.lower()}_config.yaml"
 
 # Initialize environment
 env = pistonball_v6.parallel_env(

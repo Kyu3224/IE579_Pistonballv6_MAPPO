@@ -11,6 +11,7 @@ import torch.nn as nn
 class RunningStandardScaler(nn.Module):
     def __init__(self,
                  size: Union[int, Tuple[int], gym.Space, gymnasium.Space],
+                 dim: int = 3,
                  epsilon: float = 1e-8,
                  clip_threshold: float = 5.0,
                  device: Optional[Union[str, torch.device]] = None) -> None:
@@ -52,6 +53,9 @@ class RunningStandardScaler(nn.Module):
             size = size.shape
         except:
             size = size
+
+        if dim != 3:
+            size = size[:-1] + (dim, )
 
         self.register_buffer("running_mean", torch.zeros(size, dtype=torch.float64, device=self.device))
         self.register_buffer("running_variance", torch.ones(size, dtype=torch.float64, device=self.device))
