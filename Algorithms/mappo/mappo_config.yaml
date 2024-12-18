@@ -69,7 +69,7 @@ agent:
   clip_predicted_values: True
   entropy_loss_scale: 0.01
   value_loss_scale: 1.0
-  kl_threshold: 0.0
+  kl_threshold: 0.5
   rewards_shaper_scale: 1.0
   time_limit_bootstrap: False
   # logging and checkpoint
@@ -86,8 +86,8 @@ agent:
 trainer:
   class: SequentialTrainer
   # rollouts*1000 iterations
-  timesteps: 125000
+  timesteps: 160000
   environment_info: log
 
 log:
-  use_wandb: False
+  use_wandb: True

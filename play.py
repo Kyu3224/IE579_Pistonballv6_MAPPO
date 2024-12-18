@@ -34,8 +34,8 @@ env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
 # model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1218_1242_MAPPO/checkpoints/agent_600.pt"
-model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/agent_600.pt"
-# model_path= "/logs/Data/mappo_480.pt"
+# model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/agent_600.pt"
+model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':
     env = wrap_env(env)

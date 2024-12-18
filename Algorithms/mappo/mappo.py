@@ -19,7 +19,6 @@ from skrl.resources.schedulers.torch import KLAdaptiveLR
 
 from Algorithms.skrl_lib.MultiAgent import MultiAgent
 from Algorithms.skrl_lib.memory import Memory
-from Algorithms.skrl_lib.base import color_reduction
 
 class MAPPO(MultiAgent):
     def __init__(self,
@@ -428,6 +427,8 @@ class MAPPO(MultiAgent):
             cumulative_entropy_loss = 0
             cumulative_value_loss = 0
 
+            scaler = torch.amp.GradScaler('cuda')
+
             # learning epochs
             for epoch in range(self._learning_epochs[uid]):
                 kl_divergences = []
@@ -436,58 +437,62 @@ class MAPPO(MultiAgent):
                 for sampled_states, sampled_shared_states, sampled_actions, sampled_log_prob, sampled_values, sampled_returns, sampled_advantages \
                         in sampled_batches:
 
-                    sampled_states = sampled_states.reshape(self._rollouts, -1)
-                    sampled_shared_states = sampled_shared_states.reshape(self._rollouts, -1)
+                    with torch.amp.autocast('cuda'):
 
-                    sampled_states = self._state_preprocessor[uid](sampled_states.view(-1,
-                                                                                       self.cfg['env']['frame_size'][0],
-                                                                                       self.cfg['env']['frame_size'][1],
-                                                                                       self.cfg['env']['stack_size']),
-                                                                   train=not epoch)
-                    sampled_shared_states = self._shared_state_preprocessor[uid](
-                        sampled_shared_states.view(self.cfg['rollouts'], 560, 480, -1)[..., 0:1],
-                        train=not epoch)
+                        sampled_states = sampled_states.view(self._rollouts, -1)
+                        sampled_shared_states = sampled_shared_states.view(self._rollouts, -1)
 
-                    _, next_log_prob, _ = policy.act({"states": sampled_states,
-                                                      "taken_actions": sampled_actions.unsqueeze(-1)},
-                                                     role="policy")
+                        sampled_states = self._state_preprocessor[uid](sampled_states.view(-1,
+                                                                                           self.cfg['env']['frame_size'][0],
+                                                                                           self.cfg['env']['frame_size'][1],
+                                                                                           self.cfg['env']['stack_size']),
+                                                                       train=not epoch)
+                        sampled_shared_states = self._shared_state_preprocessor[uid](
+                            sampled_shared_states.view(self.cfg['rollouts'], 560, 480, -1)[..., 0:1],
+                            train=not epoch)
 
-                    # compute approximate KL divergence
-                    with torch.no_grad():
-                        ratio = next_log_prob - sampled_log_prob
-                        kl_divergence = ((torch.exp(ratio) - 1) - ratio).mean()
-                        kl_divergences.append(kl_divergence)
+                        _, next_log_prob, _ = policy.act({"states": sampled_states,
+                                                          "taken_actions": sampled_actions.unsqueeze(-1)},
+                                                         role="policy")
 
-                    # early stopping with KL divergence
-                    if self._kl_threshold[uid] and kl_divergence > self._kl_threshold[uid]:
-                        break
+                        # compute approximate KL divergence
+                        with torch.no_grad():
+                            ratio = next_log_prob - sampled_log_prob
+                            kl_divergence = torch.mean(((torch.exp(ratio) - 1) - ratio))
+                            kl_divergences.append(kl_divergence)
 
-                    # compute entropy loss
-                    if self._entropy_loss_scale[uid]:
-                        entropy_loss = -self._entropy_loss_scale[uid] * policy.get_entropy(role="policy").mean()
-                    else:
-                        entropy_loss = 0
+                        # early stopping with KL divergence
+                        if self._kl_threshold[uid] and kl_divergence > self._kl_threshold[uid]:
+                            break
 
-                    # compute policy loss
-                    ratio = torch.exp(next_log_prob - sampled_log_prob)
-                    surrogate = sampled_advantages * ratio
-                    surrogate_clipped = sampled_advantages * torch.clip(ratio, 1.0 - self._ratio_clip[uid],
-                                                                        1.0 + self._ratio_clip[uid])
+                        # compute entropy loss
+                        if self._entropy_loss_scale[uid]:
+                            entropy_loss = -self._entropy_loss_scale[uid] * policy.get_entropy(role="policy").mean()
+                        else:
+                            entropy_loss = 0
 
-                    policy_loss = -torch.min(surrogate, surrogate_clipped).mean()
+                        # compute policy loss
+                        ratio = torch.exp(next_log_prob - sampled_log_prob)
+                        surrogate = sampled_advantages * ratio
+                        surrogate_clipped = sampled_advantages * torch.clip(ratio, 1.0 - self._ratio_clip[uid],
+                                                                            1.0 + self._ratio_clip[uid])
 
-                    # compute value loss
-                    predicted_values, _, _ = value.act({"states": sampled_shared_states}, role="value")
+                        policy_loss = -torch.min(surrogate, surrogate_clipped).mean()
 
-                    if self._clip_predicted_values:
-                        predicted_values = sampled_values + torch.clip(predicted_values - sampled_values,
-                                                                       min=-self._value_clip[uid],
-                                                                       max=self._value_clip[uid])
-                    value_loss = self._value_loss_scale[uid] * F.mse_loss(sampled_returns, predicted_values)
+                        # compute value loss
+                        predicted_values, _, _ = value.act({"states": sampled_shared_states}, role="value")
+
+                        if self._clip_predicted_values:
+                            predicted_values = sampled_values + torch.clip(predicted_values - sampled_values,
+                                                                           min=-self._value_clip[uid],
+                                                                           max=self._value_clip[uid])
+                        value_loss = self._value_loss_scale[uid] * F.mse_loss(sampled_returns, predicted_values)
+
+                        loss = policy_loss + value_loss + entropy_loss
 
                     # optimization step
-                    self.optimizers[uid].zero_grad()
-                    (policy_loss + entropy_loss + value_loss).backward()
+                    scaler.scale(loss).backward()
+
                     if config.torch.is_distributed:
                         policy.reduce_parameters()
                         if policy is not value:
@@ -498,7 +503,8 @@ class MAPPO(MultiAgent):
                         else:
                             nn.utils.clip_grad_norm_(itertools.chain(policy.parameters(), value.parameters()),
                                                      self._grad_norm_clip[uid])
-                    self.optimizers[uid].step()
+                    scaler.step(self.optimizers[uid])
+                    scaler.update()
 
                     # update cumulative losses
                     cumulative_policy_loss += policy_loss.item()
