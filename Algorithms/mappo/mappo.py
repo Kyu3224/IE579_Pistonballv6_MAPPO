@@ -218,10 +218,13 @@ class MAPPO(MultiAgent):
         # # sample random actions
         # 64,64 for frame_size in mappo_config.yaml
         try:
-            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
-                                           role="policy") for uid in self.possible_agents]
+            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(
+                self.cfg['env']['frame_size'][0], self.cfg['env']['frame_size'][1], -1))},
+                role="policy") for uid in self.possible_agents]
         except:
-            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid].view(64, 64, -1))}, role="policy") for uid in
+            data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid].view(
+                self.cfg['env']['frame_size'][0], self.cfg['env']['frame_size'][1], -1))},
+                role="policy") for uid in
                     self.possible_agents]
 
         # Train
@@ -442,7 +445,7 @@ class MAPPO(MultiAgent):
                                                                                        self.cfg['env']['stack_size']),
                                                                    train=not epoch)
                     sampled_shared_states = self._shared_state_preprocessor[uid](
-                        sampled_shared_states.view(16, 560, 480, 3)[..., 0:1],
+                        sampled_shared_states.view(self.cfg['rollouts'], 560, 480, -1)[..., 0:1],
                         train=not epoch)
 
                     _, next_log_prob, _ = policy.act({"states": sampled_states,

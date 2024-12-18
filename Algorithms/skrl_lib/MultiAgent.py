@@ -161,7 +161,6 @@ class MultiAgent:
         if config.torch.is_distributed and config.torch.rank:
             self.write_interval = 0
             self.checkpoint_interval = 0
-            # TODO: disable wandb
 
         # setup Weights & Biases
         if self.cfg.get("experiment", {}).get("wandb", False):
@@ -236,17 +235,18 @@ class MultiAgent:
         :type timesteps: int
         """
         tag = str(timestep if timestep is not None else datetime.datetime.now().strftime("%m%d_%H%M"))
+        num_iter = int(timestep / self.cfg['rollouts'])
         # separated modules
         if self.checkpoint_store_separately:
             for uid in self.possible_agents:
                 for name, module in self.checkpoint_modules[uid].items():
                     torch.save(self._get_internal_value(module),
-                               os.path.join(self.experiment_dir, "checkpoints", f"{uid}_{name}_{tag}.pt"))
+                               os.path.join(self.experiment_dir, "checkpoints", f"{uid}_{name}_{num_iter}.pt"))
         # whole agent
         else:
             modules = {uid: {name: self._get_internal_value(module) for name, module in self.checkpoint_modules[uid].items()} \
                        for uid in self.possible_agents}
-            torch.save(modules, os.path.join(self.experiment_dir, "checkpoints", f"agent_{tag}.pt"))
+            torch.save(modules, os.path.join(self.experiment_dir, "checkpoints", f"agent_{num_iter}.pt"))
 
         # best modules
         if self.checkpoint_best_modules["modules"] and not self.checkpoint_best_modules["saved"]:
