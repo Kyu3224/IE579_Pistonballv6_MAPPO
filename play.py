@@ -1,12 +1,13 @@
 import torch
 import yaml
 import argparse
+
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
-from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming Agent and helper functions are in agent.py
 
-from skrl.envs.wrappers.torch import wrap_env
+from Algorithms.ppo.ppo_agent import Agent, batchify_obs, unbatchify  # Assuming Agent and helper functions are in agent.py
 from Algorithms.mappo.mappo_agent import Runner
+from skrl.envs.wrappers.torch import wrap_env
 
 parser = argparse.ArgumentParser(description='Choose the RL algorithm')
 parser.add_argument('--alg', type=str, default='ppo', choices=['mappo', 'ppo'],
@@ -32,21 +33,25 @@ env = color_reduction_v0(env)
 env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
-model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/agent_80000.pt"
-# model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1217_0111_MAPPO/best_agent.pt"
+# model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1218_1242_MAPPO/checkpoints/agent_600.pt"
+model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/agent_600.pt"
 # model_path= "/logs/Data/mappo_480.pt"
 
 if Alg == 'mappo':
     env = wrap_env(env)
     runner = Runner(env, config)
+    runner.agent.load(model_path)
     done = False
     obs = env.reset()
     while not done:
         with torch.inference_mode():
-            actions = runner.agent.act(obs, timestep=0, timesteps=0)
-            actions_processed = {key: torch.argmax(value).item() for key, value in actions[0].items()}
-            # actions = {key: value.unsqueeze(0) for key, value in zip(list(actions.keys()), actions)}
-            obs, reward, terminated, truncated, info = env.step(actions=actions_processed)
+            # act 메서드를 통해 action_logits를 얻음
+            action_logits = runner.agent.act(obs, timestep=0, timesteps=0)[0]
+
+            actions = {key: torch.tensor([torch.argmax(value).item()], device='cuda:0') for key, value in action_logits.items()}
+
+            # 환경에 actions 적용
+            obs, reward, terminated, truncated, info = env.step(actions=actions)
 
     env.close()
 else:

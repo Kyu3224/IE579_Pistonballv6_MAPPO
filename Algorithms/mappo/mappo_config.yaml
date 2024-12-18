@@ -85,9 +85,9 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  # 125*1000 iterations
+  # rollouts*1000 iterations
   timesteps: 125000
   environment_info: log
 
 log:
-  use_wandb: True
+  use_wandb: False
