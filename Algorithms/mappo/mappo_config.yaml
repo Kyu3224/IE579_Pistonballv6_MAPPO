@@ -1,7 +1,7 @@
 # MAPPO Configuration
 
 cnn_input: &cnn_input 4
-num_episode: &num_ep 80
+num_episode: &num_ep 125
 
 # Environment Settings
 env:
@@ -46,7 +46,7 @@ agent:
   class: MAPPO
   rollouts: *num_ep
   learning_epochs: 8
-  mini_batches: 1
+  mini_batches: 10
   discount_factor: 0.99
   lambda: 0.95
   learning_rate: 3.0e-04
@@ -64,21 +64,21 @@ agent:
   random_timesteps: 0
   learning_starts: 0
   grad_norm_clip: 1.0
-  ratio_clip: 0.2
-  value_clip: 0.2
+  ratio_clip: 0.1
+  value_clip: 0.1
   clip_predicted_values: True
-  entropy_loss_scale: 0.01
-  value_loss_scale: 1.0
-  kl_threshold: 0.5
+  entropy_loss_scale: 0.1
+  value_loss_scale: 0.1
+  kl_threshold: 0.00
   rewards_shaper_scale: 1.0
   time_limit_bootstrap: False
   # logging and checkpoint
   experiment:
-    directory: "piston_push"
+    directory: "piston_push_mappo"
     experiment_name: ""
     write_interval: auto
     # 100 * rollouts
-    checkpoint_interval: 8000
+    checkpoint_interval: 12500
 
 
 # Sequential trainer
@@ -86,8 +86,8 @@ agent:
 trainer:
   class: SequentialTrainer
   # rollouts*1000 iterations
-  timesteps: 160000
+  timesteps: 500000
   environment_info: log
 
 log:
-  use_wandb: True
+  use_wandb: False

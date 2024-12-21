@@ -2,4 +2,6 @@
 /logs/
 /wandb/
 *.cpython-311.pyc
-/piston_push/
+/piston_push_mappo/
+*.yaml
+*.pt

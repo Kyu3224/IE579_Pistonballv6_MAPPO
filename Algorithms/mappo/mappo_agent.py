@@ -412,7 +412,7 @@ class SharedModel(GaussianMixin, DeterministicMixin, Model):
         )
 
         # separated layers ("policy")
-        self.mean_layer = nn.Linear(cfg['models']['global_cnn']['output'], self.num_actions)
+        self.mean_layer = nn.Linear(cfg['models']['local_cnn']['output'], self.num_actions)
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
         # separated layer ("value")

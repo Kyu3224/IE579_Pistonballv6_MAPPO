@@ -227,7 +227,7 @@ class MAPPO(MultiAgent):
                     self.possible_agents]
 
         # Train
-        # data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[uid].view(64, 64, -1))},
+        # data = [self.policies[uid].act({"states": self._state_preprocessor[uid](states[0][uid].view(64, 64, -1))},
         #                                role="policy") for uid in self.possible_agents]
 
 
@@ -391,8 +391,8 @@ class MAPPO(MultiAgent):
         policy_loss = 0
         value_loss = 0
         entropy_loss = 0
-        std = 0
         learning_rate = 0
+        returns_record = 0
 
         for uid in self.possible_agents:
             policy = self.policies[uid]
@@ -426,6 +426,7 @@ class MAPPO(MultiAgent):
             cumulative_policy_loss = 0
             cumulative_entropy_loss = 0
             cumulative_value_loss = 0
+            cumulative_returns = 0
 
             scaler = torch.amp.GradScaler('cuda')
 
@@ -439,8 +440,11 @@ class MAPPO(MultiAgent):
 
                     with torch.amp.autocast('cuda'):
 
-                        sampled_states = sampled_states.view(self._rollouts, -1)
-                        sampled_shared_states = sampled_shared_states.view(self._rollouts, -1)
+                        sampled_returns = sampled_returns * 10
+
+                        sampled_states = sampled_states.view(int(self._rollouts/self.cfg['mini_batches']), -1)
+                        sampled_shared_states = sampled_shared_states.view(int(self._rollouts/self.cfg['mini_batches']),
+                                                                           -1)
 
                         sampled_states = self._state_preprocessor[uid](sampled_states.view(-1,
                                                                                            self.cfg['env']['frame_size'][0],
@@ -448,7 +452,8 @@ class MAPPO(MultiAgent):
                                                                                            self.cfg['env']['stack_size']),
                                                                        train=not epoch)
                         sampled_shared_states = self._shared_state_preprocessor[uid](
-                            sampled_shared_states.view(self.cfg['rollouts'], 560, 480, -1)[..., 0:1],
+                            sampled_shared_states.view(int(self.cfg['rollouts']/self.cfg['mini_batches']),
+                                                       560, 480, -1)[..., 0:1],
                             train=not epoch)
 
                         _, next_log_prob, _ = policy.act({"states": sampled_states,
@@ -506,6 +511,8 @@ class MAPPO(MultiAgent):
                     scaler.step(self.optimizers[uid])
                     scaler.update()
 
+                    cumulative_returns += torch.mean(sampled_returns)
+
                     # update cumulative losses
                     cumulative_policy_loss += policy_loss.item()
                     cumulative_value_loss += value_loss.item()
@@ -542,13 +549,13 @@ class MAPPO(MultiAgent):
             policy_loss += cumulative_policy_loss / (self._learning_epochs[uid] * self._mini_batches[uid])
             value_loss += cumulative_value_loss / (self._learning_epochs[uid] * self._mini_batches[uid])
             entropy_loss += cumulative_entropy_loss / (self._learning_epochs[uid] * self._mini_batches[uid])
-            std += policy.distribution(role="policy").stddev.mean().item()
             learning_rate += self.schedulers[uid].get_last_lr()[0]
+            returns_record += cumulative_returns / (self._learning_epochs[uid] * self._mini_batches[uid])
 
         wandb.log({
-            "policy_loss": policy_loss / 20,
-            "value_loss": value_loss / 20,
-            "entropy_loss": entropy_loss / 20,
-            "std": std / 20,
-            "learning_rate": learning_rate/20,
+            "Reward": returns_record / self.possible_agents.__len__(),
+            "Policy_loss": policy_loss / self.possible_agents.__len__(),
+            "Value_loss": value_loss / self.possible_agents.__len__(),
+            "entropy_loss": entropy_loss / self.possible_agents.__len__(),
+            "learning_rate": learning_rate/self.possible_agents.__len__(),
         })

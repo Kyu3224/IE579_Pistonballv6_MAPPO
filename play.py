@@ -1,6 +1,7 @@
 import torch
 import yaml
 import argparse
+import time
 
 from pettingzoo.butterfly import pistonball_v6
 from supersuit import color_reduction_v0, frame_stack_v1, resize_v1
@@ -33,25 +34,35 @@ env = color_reduction_v0(env)
 env = resize_v1(env, 64, 64)
 env = frame_stack_v1(env, stack_size=stack_size)
 
-# model_path ="/home/kyu/Desktop/workspace/marl_project/piston_push/1218_1242_MAPPO/checkpoints/agent_600.pt"
+# model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/best_agent.pt"
 # model_path ="/home/kyu/Desktop/workspace/marl_project/logs/Data/agent_600.pt"
-model_path= "/logs/Data/mappo_480.pt"
+# model_path= "/logs/Data/mappo_480.pt"
+# model_path = "/home/kyu/Desktop/workspace/marl_project/piston_push_mappo/1220_1240_MAPPO/checkpoints/agent_4000.pt"
+model_path = "/home/kyu/Desktop/workspace/marl_project/logs/Data/4950_iter.pt"
 
 if Alg == 'mappo':
     env = wrap_env(env)
     runner = Runner(env, config)
     runner.agent.load(model_path)
-    done = False
-    obs = env.reset()
-    while not done:
-        with torch.inference_mode():
-            # act 메서드를 통해 action_logits를 얻음
-            action_logits = runner.agent.act(obs, timestep=0, timesteps=0)[0]
+    with torch.no_grad():  # inference_mode 대신 no_grad 사용
+        for episode in range(30):
+            print(f"Episode {episode} begins")
+            time.sleep(1)
+            obs = env.reset()
+            done = False
+            while not done:
+                # act 메서드를 통해 action_logits를 얻음
+                action_logits = runner.agent.act(obs, timestep=0, timesteps=0)[0]
 
-            actions = {key: torch.tensor([torch.argmax(value).item()], device='cuda:0') for key, value in action_logits.items()}
+                # actions 딕셔너리를 생성
+                actions = {key: torch.tensor([torch.argmax(value).item()], device=device)
+                           for key, value in action_logits.items()}
 
-            # 환경에 actions 적용
-            obs, reward, terminated, truncated, info = env.step(actions=actions)
+                # 환경에 actions 적용
+                obs, rewards, terms, truncs, infos = env.step(actions=actions)
+
+                # 종료 조건 업데이트
+                done = any(terms.values()) or any(truncs.values())
 
     env.close()
 else:
@@ -60,7 +71,7 @@ else:
     agent.eval()  # Set to evaluation mode
     # Play Loop
     with torch.no_grad():
-        for episode in range(5):  # Play 5 episodes
+        for episode in range(30):  # Play 5 episodes
             obs, infos = env.reset(seed=None)
             obs = batchify_obs(obs, device)
             terms = [False]

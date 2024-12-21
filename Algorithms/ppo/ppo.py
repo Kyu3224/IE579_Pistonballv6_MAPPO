@@ -4,6 +4,7 @@ import torch.optim as optim
 import os
 import yaml
 import wandb
+import time
 
 from datetime import datetime
 from Algorithms.ppo.ppo_agent import Agent, batchify_obs, batchify, unbatchify  # Assuming Agent and helper functions are in agent.py
@@ -60,6 +61,8 @@ class PPO:
                        config=self.config)
 
         for episode in range(self.total_episodes):
+            start_time = time.time()
+
             with torch.no_grad():
                 # collect observations and convert to batch of torch tensors
                 next_obs, info = self.env.reset(seed=None)
@@ -176,10 +179,14 @@ class PPO:
             var_y = np.var(y_true)
             self.explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
-            print(f"Training episode {episode}")
-            print(f"Episodic Return: {np.mean(self.total_episodic_return)}")
-            print(f"Episode Length: {end_step}")
-            print("")
+            # print(f"Training episode {episode}")
+            # print(f"Episodic Return: {np.mean(self.total_episodic_return)}")
+            # print(f"Episode Length: {end_step}")
+            # print("")
+
+            end_time = time.time()
+            elased_time = end_time - start_time
+            print(f"Epsiode {episode} took {elased_time:.2f} seconds \n")
 
             self.log(episode)
 
@@ -189,13 +196,13 @@ class PPO:
         wandb.finish()
 
     def log(self, episode):
-        print(f"Value Loss: {self.v_loss.item()}")
-        print(f"Policy Loss: {self.pg_loss.item()}")
-        print(f"Old Approx KL: {self.old_approx_kl.item()}")
-        print(f"Approx KL: {self.approx_kl.item()}")
-        print(f"Clip Fraction: {np.mean(self.clip_fracs)}")
-        print(f"Explained Variance: {self.explained_var.item()}")
-        print("\n-------------------------------------------\n")
+        # print(f"Value Loss: {self.v_loss.item()}")
+        # print(f"Policy Loss: {self.pg_loss.item()}")
+        # print(f"Old Approx KL: {self.old_approx_kl.item()}")
+        # print(f"Approx KL: {self.approx_kl.item()}")
+        # print(f"Clip Fraction: {np.mean(self.clip_fracs)}")
+        # print(f"Explained Variance: {self.explained_var.item()}")
+        # print("\n-------------------------------------------\n")
         if episode % self.wandb_interval:
             wandb.log({
                 "Reward": np.mean(self.total_episodic_return),
