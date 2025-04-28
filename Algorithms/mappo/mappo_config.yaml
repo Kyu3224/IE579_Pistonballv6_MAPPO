@@ -1,12 +1,12 @@
 # MAPPO Configuration
 
-cnn_input: &cnn_input 4
+cnn_input: &cnn_input 3
 num_episode: &num_ep 125
 
 # Environment Settings
 env:
   stack_size: *cnn_input     # Stack Size
-  frame_size: [64, 64]       # Frame Size
+  frame_size: [457, 120]       # Frame Size
   max_cycles: *num_ep            # Num of episodes
 
 seed: 42
